@@ -1,0 +1,19 @@
+{
+  "name": "gaming-price-mx",
+  "version": "1.0.0",
+  "description": "Comparador de precios de videojuegos - México",
+  "main": "backend-server.js",
+  "scripts": {
+    "start": "node backend-server.js",
+    "backend": "node backend-server.js",
+    "proxy": "node proxy-server.js",
+    "dev": "node backend-server.js"
+  },
+  "keywords": ["gaming", "price", "comparator", "mexico"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  }
+}
