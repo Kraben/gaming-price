@@ -225,10 +225,7 @@ async function buscar() {
     return d.results ?? [];
   }, 'mlResults', 'border-yellow-500', 'MXN', { blockedUi: true });
 
-  // eBay (USD → MXN si hay tipo de cambio)
-  run(async () => fetchApi(API.ebay, query, 'query'), 'ebayResults', 'border-green-500', 'USD');
-
-  // Reemplaza el bloque de CEX con este:
+  // Bloque de CEX:
 run(async () => {
     var r = await fetch(`${API.cex}?query=${encodeURIComponent(query)}`);
     var d = await r.json().catch(function () { return {}; });
@@ -253,17 +250,21 @@ run(async () => {
         throw new Error('CEX bloqueó la petición. Prueba en mx.webuy.com.');
     }
 }, 'cexResults', 'border-orange-500', 'MXN', { blockedUi: true, fallbackKey: 'fallback' });
-  
-// Función auxiliar para no repetir código
-function mostrarFallbackCex(container, query) {
-    container.innerHTML = `
-        <div style="background: rgba(249, 115, 22, 0.1); border: 1px solid #f97316; padding: 1rem; border-radius: 0.5rem;">
-            <p style="color: #f97316; font-weight: bold; margin-bottom: 5px;">⚠️ CeX no disponible</p>
-            <p style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 10px;">La API está bloqueada temporalmente. Intenta la búsqueda directa:</p>
-            <a href="https://mexico.webuy.com/search?stext=${encodeURIComponent(query)}" 
-               target="_blank" 
-               style="display: inline-block; background: #f97316; color: black; padding: 6px 12px; border-radius: 4px; font-weight: bold; text-decoration: none; font-size: 0.8rem;">
-               Buscar "${query}" en mx.webuy.com ↗
-            </a>
-        </div>`;
+
+  // CheapShark (USD → MXN). Precio en centavos: API devuelve "cheapest" como string, e.g. "4.99"
+  run(async () => {
+    const r = await fetch(`https://www.cheapshark.com/api/1.0/games?title=${encodeURIComponent(query)}`);
+    if (!r.ok) throw new Error(`CheapShark: ${r.status}`);
+    const list = await r.json();
+    return (list || []).map(x => ({
+      title: x.external,
+      price: parseFloat(x.cheapest) || 0,
+      permalink: x.cheapestDealID ? `https://www.cheapshark.com/redirect?dealID=${x.cheapestDealID}` : null
+    }));
+  }, 'digitalResults', 'border-blue-500', 'USD');
 }
+
+document.getElementById('searchBtn').onclick = buscar;
+document.getElementById('gameInput')?.addEventListener('keypress', e => {
+  if (e.key === 'Enter') buscar();
+});
