@@ -8,8 +8,7 @@
     "backend": "node backend-server.js",
     "proxy": "node proxy-server.js",
     "dev": "node backend-server.js",
-    "build:css": "tailwindcss -i src/input.css -o styles.css --minify",
-    "build": "npm run build:css"
+    "build:css": "tailwindcss -i src/input.css -o styles.css --minify"
   },
   "keywords": ["gaming", "price", "comparator", "mexico"],
   "author": "",
