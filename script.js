@@ -46,6 +46,20 @@ function setError(id, msg) {
   el.innerHTML = `<div class="rounded-lg p-3 bg-red-900/20 border border-red-500/50 text-red-400 text-sm">${escapeHtml(msg)}</div>`;
 }
 
+function setBlocked(id, title, hint, linkUrl, linkText) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const link = linkUrl && linkText
+    ? `<a href="${escapeHtml(linkUrl)}" target="_blank" rel="noopener" class="text-blue-400 underline">${escapeHtml(linkText)}</a>`
+    : '';
+  el.innerHTML = `
+    <div class="rounded-lg p-3 bg-amber-900/20 border border-amber-500/50 text-amber-200 text-sm">
+      <div class="font-bold mb-1">${escapeHtml(title)}</div>
+      <div class="opacity-90">${escapeHtml(hint)}</div>
+      ${link ? `<div class="mt-2">${link}</div>` : ''}
+    </div>`;
+}
+
 function setEmpty(id) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -76,12 +90,23 @@ async function buscar() {
 
   setLoading(['mlResults', 'ebayResults', 'cexResults', 'digitalResults'], '🔍 Buscando…');
 
-  const run = async (fn, resultId, color, currency = 'MXN') => {
+  const run = async (fn, resultId, color, currency = 'MXN', opts = {}) => {
     try {
       const items = await fn();
       setResults(resultId, items, color, currency);
     } catch (e) {
-      setError(resultId, e.message || 'Error');
+      const msg = e.message || 'Error';
+      if (opts.blockedUi && (msg.includes('PolicyAgent') || msg === 'NO_CREDENTIALS' || msg.includes('CEX') || msg.includes('bloqueó'))) {
+        if (msg === 'NO_CREDENTIALS') {
+          setBlocked(resultId, '⚠️ ML sin configurar', 'Añade ML_CLIENT_ID y ML_CLIENT_SECRET en Vercel → Settings → Environment Variables.', null, null);
+        } else if (msg.includes('PolicyAgent') || msg.includes('mercadolibre')) {
+          setBlocked(resultId, '⚠️ Mercado Libre no disponible', 'La API de búsqueda está restringida (PolicyAgent). Busca en mercadolibre.com.mx.', 'https://www.mercadolibre.com.mx/', 'mercadolibre.com.mx');
+        } else {
+          setBlocked(resultId, '⚠️ ' + (resultId === 'cexResults' ? 'CEX' : 'Fuente') + ' no disponible', msg, resultId === 'cexResults' ? 'https://mexico.webuy.com/' : null, resultId === 'cexResults' ? 'mexico.webuy.com' : null);
+        }
+      } else {
+        setError(resultId, msg);
+      }
     }
   };
 
@@ -93,16 +118,27 @@ async function buscar() {
       if (d.blocked_by === 'PolicyAgent' || r.status === 403) {
         throw new Error('ML bloqueado (PolicyAgent). Busca en mercadolibre.com.mx');
       }
+      if (r.status === 500 && d.code === 'NO_CREDENTIALS') {
+        throw new Error('NO_CREDENTIALS');
+      }
       throw new Error(d.error || d.message || `ML: ${r.status}`);
     }
     return d.results ?? [];
-  }, 'mlResults', 'border-yellow-500');
+  }, 'mlResults', 'border-yellow-500', 'MXN', { blockedUi: true });
 
   // eBay
   run(async () => fetchApi(API.ebay, query, 'query'), 'ebayResults', 'border-green-500', 'USD');
 
-  // CEX
-  run(async () => fetchApi(API.cex, query, 'query'), 'cexResults', 'border-orange-500');
+  // CEX (403 = bloqueado por CEX)
+  run(async () => {
+    const r = await fetch(`${API.cex}?query=${encodeURIComponent(query)}`);
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      if (r.status === 403 || d.blocked) throw new Error('CEX bloqueó la petición. Prueba en mexico.webuy.com.');
+      throw new Error(d.error || d.message || `CEX: ${r.status}`);
+    }
+    return d.results ?? [];
+  }, 'cexResults', 'border-orange-500', 'MXN', { blockedUi: true });
 
   // CheapShark (directo, sin backend)
   run(async () => {

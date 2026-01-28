@@ -18,7 +18,6 @@ export default async function handler(req, res) {
 
   try {
     const auth = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64');
-
     const tokenRes = await fetch('https://api.ebay.com/identity/v1/oauth2/token', {
       method: 'POST',
       headers: {
@@ -32,7 +31,6 @@ export default async function handler(req, res) {
     });
 
     const tokenData = await tokenRes.json();
-
     if (!tokenData.access_token) {
       return res.status(500).json({
         error: 'No se pudo obtener el token de eBay',
@@ -40,7 +38,6 @@ export default async function handler(req, res) {
       });
     }
 
-    // Búsqueda en categoría videojuegos (139973)
     const searchUrl = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(query)}&limit=6&category_ids=139973`;
     const ebayRes = await fetch(searchUrl, {
       headers: { 'Authorization': `Bearer ${tokenData.access_token}` }
@@ -57,7 +54,6 @@ export default async function handler(req, res) {
 
     const data = await ebayRes.json();
     const summaries = data.itemSummaries || [];
-
     const items = summaries.map(item => ({
       id: item.itemId,
       title: item.title,
@@ -68,16 +64,9 @@ export default async function handler(req, res) {
       condition: item.condition
     }));
 
-    return res.status(200).json({
-      success: true,
-      results: items,
-      total: items.length
-    });
+    return res.status(200).json({ success: true, results: items, total: items.length });
   } catch (error) {
     console.error('Error en API eBay:', error);
-    return res.status(500).json({
-      error: 'Error interno del servidor',
-      message: error.message
-    });
+    return res.status(500).json({ error: 'Error interno del servidor', message: error.message });
   }
 }
