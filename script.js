@@ -225,31 +225,21 @@ async function buscar() {
     return d.results ?? [];
   }, 'mlResults', 'border-yellow-500', 'MXN', { blockedUi: true });
 
-  // Bloque de CEX:
-run(async () => {
+  // eBay (USD → MXN si hay tipo de cambio)
+  run(async () => fetchApi(API.ebay, query, 'query'), 'ebayResults', 'border-green-500', 'USD');
+
+  // CEX: 1) /api/cex  2) si 403, fetch directo desde el navegador (IP usuario; puede evitar bloqueo)
+  run(async () => {
     var r = await fetch(`${API.cex}?query=${encodeURIComponent(query)}`);
     var d = await r.json().catch(function () { return {}; });
-    
-    // Si la API responde bien, normalizamos las llaves
-    if (r.ok) {
-        const items = (d.results || d).map(item => ({
-            title: item.title,
-            price: item.price,
-            thumbnail: item.thumbnail || item.image, // Acepta ambos
-            permalink: item.permalink || item.url,    // Acepta ambos
-            category: item.category
-        }));
-        return { items: items, currency: d.currency || 'MXN', fallback: d.fallback || null };
-    }
-
+    if (r.ok) return { items: d.results || [], currency: d.currency || 'MXN', fallback: d.fallback || null };
     if (r.status !== 403 && !d.blocked) throw new Error(d.error || d.message || 'CEX: ' + r.status);
-    
     try {
-        return await fetchCexDirect(query);
+      return await fetchCexDirect(query);
     } catch (e) {
-        throw new Error('CEX bloqueó la petición. Prueba en mx.webuy.com.');
+      throw new Error('CEX bloqueó la petición. Prueba en mx.webuy.com.');
     }
-}, 'cexResults', 'border-orange-500', 'MXN', { blockedUi: true, fallbackKey: 'fallback' });
+  }, 'cexResults', 'border-orange-500', 'MXN', { blockedUi: true, fallbackKey: 'fallback' });
 
   // CheapShark (USD → MXN). Precio en centavos: API devuelve "cheapest" como string, e.g. "4.99"
   run(async () => {
