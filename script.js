@@ -198,7 +198,7 @@ async function buscar() {
         } else if (msg.includes('PolicyAgent') || msg.includes('mercadolibre')) {
           setBlocked(resultId, '⚠️ Mercado Libre no disponible', 'La API de búsqueda está restringida (PolicyAgent). Busca en mercadolibre.com.mx.', 'https://www.mercadolibre.com.mx/', 'mercadolibre.com.mx');
         } else if (resultId === 'cexResults') {
-          var cexSearchUrl = 'https://mx.webuy.com/search?keyword=' + encodeURIComponent(query);
+          var cexSearchUrl = 'https://mx.webuy.com/search/?stext=' + encodeURIComponent(query);
           setBlocked(resultId, '⚠️ CEX no disponible', 'La API devuelve 403 (serverless y navegador). Busca directamente en CEX:', cexSearchUrl, 'Buscar «' + query + '» en mx.webuy.com');
         } else {
           setBlocked(resultId, '⚠️ Fuente no disponible', msg, null, null);
