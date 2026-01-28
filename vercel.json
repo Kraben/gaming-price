@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/mercadolibre.js": { "maxDuration": 30 },
+    "api/ebay.js": { "maxDuration": 30 },
+    "api/cex.js": { "maxDuration": 15 }
+  }
+}

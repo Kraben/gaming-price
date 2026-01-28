@@ -5,26 +5,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Gamer Price MX – Comparador de precios</title>
-  <!-- Tailwind CDN (solo desarrollo) - Para producción, usar build con PostCSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    // Suprimir advertencia de producción de Tailwind CDN
-    if (window.tailwind) {
-      console.log('Tailwind CSS cargado (modo desarrollo)');
-    }
-  </script>
 </head>
 
 <body>
   <div class="bg-gray-950 min-h-screen p-6 font-sans text-gray-100">
-    <div class="max-w-5xl mx-auto">
+    <div class="max-w-6xl mx-auto">
 
       <header class="text-center mb-10">
         <h1 class="text-4xl font-black text-yellow-500 mb-4 tracking-tighter italic">GAMER PRICE MX</h1>
-        <p class="text-gray-400 text-sm mb-6 uppercase tracking-widest">Comparador de Precios: Físico vs Digital</p>
+        <p class="text-gray-400 text-sm mb-6 uppercase tracking-widest">Comparador de Precios: ML · eBay · CEX · Digital</p>
 
         <div class="flex max-w-md mx-auto shadow-2xl border-2 border-yellow-600 rounded-lg overflow-hidden">
-          <input id="gameInput" type="text" placeholder="Ej: Zelda Echoes, Elden Ring…"
+          <input id="gameInput" type="text" placeholder="Ej: Zelda, Elden Ring…"
                  class="w-full p-4 bg-gray-900 text-white outline-none focus:bg-gray-800 transition-all"
                  autocomplete="off">
           <button id="searchBtn" class="bg-yellow-500 hover:bg-yellow-400 text-black font-black px-8 transition-colors">
@@ -33,25 +26,45 @@
         </div>
       </header>
 
-      <div class="grid md:grid-cols-2 gap-8">
+      <div class="grid md:grid-cols-2 gap-6">
 
         <section>
           <div class="flex items-center gap-2 mb-4 border-b border-yellow-600 pb-2">
             <span class="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></span>
-            <h2 class="text-yellow-400 font-bold uppercase tracking-widest text-sm">Físico – Mercado Libre (MXN)</h2>
+            <h2 class="text-yellow-400 font-bold uppercase tracking-widest text-sm">Mercado Libre (MXN)</h2>
           </div>
-          <div id="mlResults" class="space-y-4">
-            <p class="text-gray-600 text-xs italic">Los mejores precios físicos de Mercado Libre aparecerán aquí…</p>
+          <div id="mlResults" class="space-y-4 min-h-[120px]">
+            <p class="text-gray-600 text-xs italic">Precios físicos de ML…</p>
           </div>
         </section>
 
         <section>
-          <div class="flex items-center gap-2 mb-4 border-b border-blue-900 pb-2">
-            <span class="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></span>
-            <h2 class="text-blue-400 font-bold uppercase tracking-widest text-sm">PC Digital (USD)</h2>
+          <div class="flex items-center gap-2 mb-4 border-b border-green-600 pb-2">
+            <span class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></span>
+            <h2 class="text-green-400 font-bold uppercase tracking-widest text-sm">eBay (USD)</h2>
           </div>
-          <div id="digitalResults" class="space-y-4">
-            <p class="text-gray-600 text-xs italic">Steam, Epic y más (vía CheapShark) aparecerán aquí…</p>
+          <div id="ebayResults" class="space-y-4 min-h-[120px]">
+            <p class="text-gray-600 text-xs italic">Precios de eBay…</p>
+          </div>
+        </section>
+
+        <section>
+          <div class="flex items-center gap-2 mb-4 border-b border-orange-600 pb-2">
+            <span class="w-3 h-3 bg-orange-500 rounded-full animate-pulse"></span>
+            <h2 class="text-orange-400 font-bold uppercase tracking-widest text-sm">CEX / Webuy (MXN)</h2>
+          </div>
+          <div id="cexResults" class="space-y-4 min-h-[120px]">
+            <p class="text-gray-600 text-xs italic">Precios de CEX México…</p>
+          </div>
+        </section>
+
+        <section>
+          <div class="flex items-center gap-2 mb-4 border-b border-blue-600 pb-2">
+            <span class="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></span>
+            <h2 class="text-blue-400 font-bold uppercase tracking-widest text-sm">PC Digital – CheapShark (USD)</h2>
+          </div>
+          <div id="digitalResults" class="space-y-4 min-h-[120px]">
+            <p class="text-gray-600 text-xs italic">Steam, Epic, etc.…</p>
           </div>
         </section>
 
