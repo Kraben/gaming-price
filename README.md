@@ -106,7 +106,8 @@ Luego visita `http://localhost:8000`
 
 - **Mercado Libre API**: ❌ Bloqueada/deprecada (403 PolicyAgent). Proxy solo no suele bastar. Ver [EXPLICACION_ML.md](./EXPLICACION_ML.md).
 - **CheapShark API**: ✅ Precios digitales (Steam, Epic, etc.)
-- **eBay, CEX**: Según configuración en Vercel.
+- **eBay**: Según configuración en Vercel (EBAY_APP_ID, EBAY_CERT_ID).
+- **CEX / WeBuy**: Implementación según [Dionakra/webuy-api](https://github.com/Dionakra/webuy-api) (Search: `/boxes?q=...&firstRecord=1&count=20&sortBy=relevance&sortOrder=desc`). Probamos UK → MX; si 403, enlace directo a mexico.webuy.com/search.
 
 ## 🎨 Tecnologías
 

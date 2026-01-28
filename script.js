@@ -143,9 +143,9 @@ async function fetchApi(url, q, queryKey = 'query') {
   return data.results ?? data;
 }
 
-// Fallback: fetch CEX desde el navegador (IP del usuario). El serverless suele recibir 403.
+// Fallback: fetch CEX desde el navegador (IP del usuario). Ver https://github.com/Dionakra/webuy-api
 function parseCexBoxes(data) {
-  var boxes = (data.response && data.response.data && data.response.data.boxes) || [];
+  var boxes = (data.response && data.response.data && data.response.data.boxes) || data.boxes || [];
   return boxes.map(function (item) {
     var imgs = item.imageUrls || {};
     return {
@@ -161,7 +161,7 @@ function parseCexBoxes(data) {
 }
 
 async function fetchCexDirect(query) {
-  var cexUrl = 'https://wss2.cex.mx.webuy.io/v3/boxes?q=' + encodeURIComponent(query) + '&firstRecord=1&count=20';
+  var cexUrl = 'https://wss2.cex.mx.webuy.io/v3/boxes?q=' + encodeURIComponent(query) + '&firstRecord=1&count=20&sortBy=relevance&sortOrder=desc';
   var r = await fetch(cexUrl);
   if (!r.ok) throw new Error('CEX bloqueó la petición. Prueba en mexico.webuy.com.');
   var data = await r.json().catch(function () { throw new Error('CEX: respuesta no válida'); });
