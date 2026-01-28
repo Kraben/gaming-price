@@ -167,14 +167,29 @@ async function buscar() {
   run(async () => {
     const r = await fetch(`${API.ebay}?query=${encodeURIComponent(query)}`);
     const d = await r.json();
+    
     if (!r.ok) throw new Error("EBAY_ERR");
-    return (d.results || d).map(item => ({
-      title: item.title,
-      price: item.price?.value || item.price,
-      thumbnail: item.image?.imageUrl || item.thumbnail,
-      permalink: item.itemWebUrl || item.permalink
+
+    // 1. Extraemos y normalizamos los datos básicos
+    let items = (d.results || d).map(item => ({
+        title: item.title,
+        price: parseFloat(item.price?.value || item.price) || 0,
+        thumbnail: item.image?.imageUrl || item.thumbnail,
+        permalink: item.itemWebUrl || item.permalink,
+        currency: 'USD'
     }));
-  }, 'ebayResults', 'border-green-500', 'USD');
+
+    // 2. Convertimos a MXN primero (si hay tasas disponibles) 
+    // para que el ordenamiento sea real sobre el valor final
+    if (rates && rates.usd) {
+        items = convertToMxn(items, 'USD', rates);
+    }
+
+    // 3. ORDENAMIENTO: Del más barato al más caro
+    items.sort((a, b) => a.price - b.price);
+
+    return items;
+}, 'ebayResults', 'border-green-500', 'MXN');
 
   // 3. CEX (Sin fetch directo para evitar CORS)
   run(async () => {
