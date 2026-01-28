@@ -1,80 +1,56 @@
 // api/cex.js
 const REGIONS = {
-  mx: { 
-    base: 'https://wss2.cex.mx.webuy.io/v3', 
-    currency: 'MXN', 
-    link: 'https://mx.webuy.com/product-detail?id=',
-    origin: 'https://mx.webuy.com'
-  },
-  uk: { 
-    base: 'https://wss2.cex.uk.webuy.io/v3', 
-    currency: 'GBP', 
-    link: 'https://uk.webuy.com/product-detail?id=',
-    origin: 'https://uk.webuy.com'
-  }
+  mx: { base: 'https://wss2.cex.mx.webuy.io/v3', currency: 'MXN', link: 'https://mx.webuy.com/product-detail?id=', origin: 'https://mx.webuy.com' },
+  uk: { base: 'https://wss2.cex.uk.webuy.io/v3', currency: 'GBP', link: 'https://uk.webuy.com/product-detail?id=', origin: 'https://uk.webuy.com' }
 };
-
-function toItems(boxes, region) {
-  return boxes.map(item => ({
-    // Estos nombres coinciden exactamente con lo que busca tu buscar.js
-    title: item.boxName,
-    price: item.sellPrice,
-    exchange: item.exchangePrice,
-    image: item.imageUrls?.medium || '', 
-    category: item.categoryFriendlyName || 'Videojuego',
-    url: region.link + item.boxId,
-    currency: region.currency
-  }));
-}
 
 async function fetchCex(region, query) {
   const url = `${region.base}/boxes?q=${encodeURIComponent(query)}&firstRecord=1&count=20&sortBy=relevance&sortOrder=desc`;
-  
   return fetch(url, {
     headers: {
-      // Headers para evitar el error 403 Forbidden
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
       'Accept': 'application/json',
+      'Accept-Language': 'es-MX,es;q=0.9',
       'Origin': region.origin,
-      'Referer': region.origin + '/'
+      'Referer': region.origin + '/',
+      'Cache-Control': 'no-cache'
     }
   });
 }
 
 module.exports = async function handler(req, res) {
   const query = req.query?.query;
-
-  if (!query) {
-    return res.status(400).json({ error: 'Parámetro "query" requerido' });
-  }
+  if (!query) return res.status(400).json({ error: 'Query requerida' });
 
   try {
-    // Intentamos México primero
+    // Intentamos México directamente
     let response = await fetchCex(REGIONS.mx, query);
-    let region = REGIONS.mx;
-
-    // Si México falla o está bloqueado, probamos UK como respaldo
+    
+    // Si da 403 o falla, intentamos UK solo como último recurso
     if (!response.ok) {
       response = await fetchCex(REGIONS.uk, query);
-      region = REGIONS.uk;
+      var region = REGIONS.uk;
+    } else {
+      var region = REGIONS.mx;
     }
 
     if (response.ok) {
       const data = await response.json();
       const boxes = data.response?.data?.boxes || data.boxes || [];
-      const items = toItems(boxes, region);
-      
-      // Enviamos el array directamente para que productos.length funcione
+      const items = boxes.map(item => ({
+        id: item.boxId,
+        title: item.boxName,
+        price: item.sellPrice,
+        thumbnail: item.imageUrls?.medium || '',
+        permalink: region.link + item.boxId,
+        currency: region.currency
+      }));
       return res.status(200).json(items);
     }
 
-    return res.status(response.status).json({ 
-      error: 'API bloqueada o no disponible', 
-      status: response.status 
-    });
-
-  } catch (error) {
-    console.error('Error CEX:', error);
-    return res.status(500).json({ error: 'Error interno del servidor' });
+    // Si llegamos aquí, es que ambos dieron 403
+    return res.status(403).json({ error: 'Bloqueado por CloudFront', blocked: true });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
   }
 };
