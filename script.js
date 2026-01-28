@@ -1,5 +1,6 @@
 // Gamer Price MX – ML, eBay, CEX, CheapShark
 // Producción: Vercel serverless (/api/*). Desarrollo: backend local.
+// Tipos de cambio: Frankfurter (api.frankfurter.dev). Precios mostrados en MXN.
 
 // Siempre usar mismo origen: en Vercel = producción; en local con `vercel dev` = /api/* desde api/
 const BASE = window.location.origin;
@@ -8,6 +9,60 @@ const API = {
   ebay: `${BASE}/api/ebay`,
   cex: `${BASE}/api/cex`
 };
+
+const RATES_API = 'https://api.frankfurter.dev/v1/latest';
+let ratesCache = null;
+
+async function getRates() {
+  if (ratesCache) return ratesCache;
+  try {
+    const [usdRes, gbpRes] = await Promise.all([
+      fetch(RATES_API + '?from=USD&to=MXN'),
+      fetch(RATES_API + '?from=GBP&to=MXN')
+    ]);
+    const usdData = await usdRes.json().catch(() => ({}));
+    const gbpData = await gbpRes.json().catch(() => ({}));
+    const usd = usdData.rates && usdData.rates.MXN ? Number(usdData.rates.MXN) : null;
+    const gbp = gbpData.rates && gbpData.rates.MXN ? Number(gbpData.rates.MXN) : null;
+    const date = usdData.date || gbpData.date || '';
+    if (usd != null) {
+      ratesCache = { usd, gbp, date };
+      return ratesCache;
+    }
+  } catch (e) {
+    console.warn('Tipo de cambio no disponible:', e);
+  }
+  return null;
+}
+
+function updateRatesBanner(rates) {
+  const el = document.getElementById('ratesBanner');
+  if (!el) return;
+  if (!rates) {
+    el.textContent = 'Tipo de cambio no disponible. Algunos precios en moneda original.';
+    return;
+  }
+  const d = rates.date ? new Date(rates.date).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+  let t = `1 USD = ${rates.usd.toFixed(2)} MXN`;
+  if (rates.gbp != null) t += ` · 1 GBP = ${rates.gbp.toFixed(2)} MXN`;
+  if (d) t += ` (${d})`;
+  t += '. Precios en MXN. Fuente: Frankfurter.';
+  el.textContent = t;
+}
+
+function convertToMxn(items, fromCurrency, rates) {
+  if (!rates || !items || !items.length) return items;
+  const rate = fromCurrency === 'GBP' ? rates.gbp : rates.usd;
+  if (rate == null) return items;
+  return items.map(function (item) {
+    const orig = Number(item.price) || 0;
+    return Object.assign({}, item, {
+      price: Math.round(orig * rate * 100) / 100,
+      priceOriginal: orig,
+      currencyOriginal: fromCurrency
+    });
+  });
+}
 
 function escapeHtml(t) {
   const d = document.createElement('div');
@@ -23,12 +78,14 @@ function renderItem(item, color, currency = 'MXN') {
   const img = thumb
     ? `<img src="${escapeHtml(thumb)}" alt="" class="w-11 h-11 object-contain bg-white rounded" loading="lazy">`
     : '';
+  const orig = item.priceOriginal != null && item.currencyOriginal;
+  const origLabel = orig ? ` <span class="text-gray-500 text-sm font-normal">(~$${Number(item.priceOriginal).toLocaleString('es-MX')} ${item.currencyOriginal})</span>` : '';
   return `
     <a href="${escapeHtml(link)}" target="_blank" rel="noopener" class="block bg-gray-900/80 rounded-lg p-3 border-l-4 ${color} hover:bg-gray-800/80 transition flex gap-3 items-center no-underline text-inherit">
       ${img}
       <div class="flex-1 min-w-0">
         <div class="text-gray-200 text-sm font-medium truncate">${title}</div>
-        <div class="text-lg font-black ${color.replace('border-', 'text-')}">$${Number(price).toLocaleString('es-MX')} ${currency}</div>
+        <div class="text-lg font-black ${color.replace('border-', 'text-')}">$${Number(price).toLocaleString('es-MX')} ${currency}${origLabel}</div>
       </div>
     </a>`;
 }
@@ -92,13 +149,20 @@ async function buscar() {
 
   setLoading(['mlResults', 'ebayResults', 'cexResults', 'digitalResults'], '🔍 Buscando…');
 
+  const rates = await getRates();
+  updateRatesBanner(rates);
+
   const run = async (fn, resultId, color, currency = 'MXN', opts = {}) => {
     try {
       const raw = await fn();
       const isObj = raw && !Array.isArray(raw) && raw.items;
-      const items = isObj ? raw.items : raw;
-      const cur = (isObj && raw.currency) ? raw.currency : currency;
+      let items = isObj ? raw.items : raw;
+      let cur = (isObj && raw.currency) ? raw.currency : currency;
       const note = (isObj && opts.fallbackKey && raw[opts.fallbackKey]) ? raw[opts.fallbackKey] : null;
+      if (rates && (cur === 'USD' || cur === 'GBP') && items && items.length) {
+        items = convertToMxn(items, cur, rates);
+        cur = 'MXN';
+      }
       setResults(resultId, items, color, cur, note);
     } catch (e) {
       const msg = e.message || 'Error';
@@ -116,7 +180,7 @@ async function buscar() {
     }
   };
 
-  // ML
+  // ML (ya MXN)
   run(async () => {
     const r = await fetch(`${API.ml}?query=${encodeURIComponent(query)}`);
     const d = await r.json().catch(() => ({}));
@@ -132,10 +196,10 @@ async function buscar() {
     return d.results ?? [];
   }, 'mlResults', 'border-yellow-500', 'MXN', { blockedUi: true });
 
-  // eBay
+  // eBay (USD → MXN si hay tipo de cambio)
   run(async () => fetchApi(API.ebay, query, 'query'), 'ebayResults', 'border-green-500', 'USD');
 
-  // CEX: MX primero; si 403, backend prueba UK y devuelve { results, currency, fallback? }
+  // CEX: MX o UK; si GBP, convertir a MXN
   run(async () => {
     const r = await fetch(`${API.cex}?query=${encodeURIComponent(query)}`);
     const d = await r.json().catch(() => ({}));
@@ -146,14 +210,14 @@ async function buscar() {
     return { items: d.results ?? [], currency: d.currency || 'MXN', fallback: d.fallback || null };
   }, 'cexResults', 'border-orange-500', 'MXN', { blockedUi: true, fallbackKey: 'fallback' });
 
-  // CheapShark (directo, sin backend)
+  // CheapShark (USD → MXN). Precio en centavos: API devuelve "cheapest" como string, e.g. "4.99"
   run(async () => {
     const r = await fetch(`https://www.cheapshark.com/api/1.0/games?title=${encodeURIComponent(query)}`);
     if (!r.ok) throw new Error(`CheapShark: ${r.status}`);
     const list = await r.json();
     return (list || []).map(x => ({
       title: x.external,
-      price: x.cheapest,
+      price: parseFloat(x.cheapest) || 0,
       permalink: x.cheapestDealID ? `https://www.cheapshark.com/redirect?dealID=${x.cheapestDealID}` : null
     }));
   }, 'digitalResults', 'border-blue-500', 'USD');
