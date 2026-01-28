@@ -1,0 +1,27 @@
+---
+description: Commit after each fix or prompt that changes code
+alwaysApply: true
+---
+
+# Commit After Each Fix / Prompt
+
+**Always commit** at the end of every response where you:
+
+- Apply a fix (bug, error, regression)
+- Implement a feature or change requested in the user's prompt
+- Modify project files (code, config, docs)
+
+## What to do
+
+1. After making edits, run `git status` and `git add` the changed files.
+2. Create a **single commit** with a clear, concise message (e.g. `fix: ...`, `feat: ...`).
+3. Do **not** push unless the user asks; just commit locally.
+
+## Commit message format
+
+- `fix: ...` for bugfixes
+- `feat: ...` for new features
+- `docs: ...` for documentation-only changes
+- `chore: ...` for tooling, config, or minor updates
+
+Example: `fix(cex): fallback fetch directo desde navegador si /api/cex 403`
