@@ -228,42 +228,32 @@ async function buscar() {
   // eBay (USD → MXN si hay tipo de cambio)
   run(async () => fetchApi(API.ebay, query, 'query'), 'ebayResults', 'border-green-500', 'USD');
 
-  // --- BÚSQUEDA EN CEX (Webuy) ---
-const cexDiv = document.getElementById('cexResults'); // Cambiado de mlResults a cexResults
-cexDiv.innerHTML = "<p style='color: #ff6600; font-weight: bold;'>⚡ Escaneando CeX México/UK...</p>";
+  // Reemplaza el bloque de CEX con este:
+run(async () => {
+    var r = await fetch(`${API.cex}?query=${encodeURIComponent(query)}`);
+    var d = await r.json().catch(function () { return {}; });
+    
+    // Si la API responde bien, normalizamos las llaves
+    if (r.ok) {
+        const items = (d.results || d).map(item => ({
+            title: item.title,
+            price: item.price,
+            thumbnail: item.thumbnail || item.image, // Acepta ambos
+            permalink: item.permalink || item.url,    // Acepta ambos
+            category: item.category
+        }));
+        return { items: items, currency: d.currency || 'MXN', fallback: d.fallback || null };
+    }
 
-fetch(`/api/cex?query=${encodeURIComponent(query)}`)
-    .then(res => {
-        // Si la API responde con error 403 o similar, lanzamos un error para ir al catch
-        if (!res.ok) throw new Error(`Status ${res.status}`);
-        return res.json();
-    })
-    .then(productos => {
-        // Validamos que sea un array y tenga contenido
-        if (Array.isArray(productos) && productos.length > 0) {
-            cexDiv.innerHTML = productos.map(item => `
-                <div style="background: #111827; padding: 1rem; border-radius: 0.5rem; border-left: 4px solid #f97316; margin-bottom: 12px; display: flex; gap: 12px; align-items: center;">
-                    <img src="${item.image}" style="width: 65px; height: 65px; border-radius: 4px; object-fit: contain; background: white;" alt="Juego">
-                    <div style="flex: 1;">
-                        <p style="font-size: 0.75rem; color: #9ca3af; margin: 0; text-transform: uppercase;">${item.category}</p>
-                        <h4 style="font-size: 0.85rem; color: #f3f4f6; margin: 2px 0; line-height: 1.2;">${item.title}</h4>
-                        <div style="display: flex; align-items: baseline; gap: 8px;">
-                            <p style="font-size: 1.1rem; color: #f97316; font-weight: bold; margin: 0;">$${item.price.toLocaleString()} ${item.currency}</p>
-                        </div>
-                        <a href="${item.url}" target="_blank" style="color: #6366f1; font-size: 0.75rem; text-decoration: none; font-weight: bold;">Ver en CeX ↗</a>
-                    </div>
-                </div>
-            `).join('');
-        } else {
-            // Si no hay resultados, mostramos el botón manual
-            mostrarFallbackCex(cexDiv, query);
-        }
-    })
-    .catch(error => {
-        console.error("Error en CeX:", error);
-        mostrarFallbackCex(cexDiv, query);
-    });
-
+    if (r.status !== 403 && !d.blocked) throw new Error(d.error || d.message || 'CEX: ' + r.status);
+    
+    try {
+        return await fetchCexDirect(query);
+    } catch (e) {
+        throw new Error('CEX bloqueó la petición. Prueba en mx.webuy.com.');
+    }
+}, 'cexResults', 'border-orange-500', 'MXN', { blockedUi: true, fallbackKey: 'fallback' });
+  
 // Función auxiliar para no repetir código
 function mostrarFallbackCex(container, query) {
     container.innerHTML = `
