@@ -143,6 +143,32 @@ async function fetchApi(url, q, queryKey = 'query') {
   return data.results ?? data;
 }
 
+// Fallback: fetch CEX desde el navegador (IP del usuario). El serverless suele recibir 403.
+function parseCexBoxes(data) {
+  var boxes = (data.response && data.response.data && data.response.data.boxes) || [];
+  return boxes.map(function (item) {
+    var imgs = item.imageUrls || {};
+    return {
+      id: item.boxId,
+      title: item.boxName,
+      price: item.sellPrice,
+      exchange: item.exchangePrice,
+      currency: 'MXN',
+      thumbnail: (imgs && imgs.medium) ? imgs.medium : '',
+      permalink: 'https://mexico.webuy.com/product-detail?id=' + item.boxId
+    };
+  });
+}
+
+async function fetchCexDirect(query) {
+  var cexUrl = 'https://wss2.cex.mx.webuy.io/v3/boxes?q=' + encodeURIComponent(query) + '&firstRecord=1&count=20';
+  var r = await fetch(cexUrl);
+  if (!r.ok) throw new Error('CEX bloqueó la petición. Prueba en mexico.webuy.com.');
+  var data = await r.json().catch(function () { throw new Error('CEX: respuesta no válida'); });
+  var items = parseCexBoxes(data);
+  return { items: items, currency: 'MXN', fallback: 'Resultados desde búsqueda directa (tu navegador).' };
+}
+
 async function buscar() {
   const query = document.getElementById('gameInput')?.value?.trim();
   if (!query) return;
@@ -199,15 +225,17 @@ async function buscar() {
   // eBay (USD → MXN si hay tipo de cambio)
   run(async () => fetchApi(API.ebay, query, 'query'), 'ebayResults', 'border-green-500', 'USD');
 
-  // CEX: MX o UK; si GBP, convertir a MXN
+  // CEX: 1) /api/cex  2) si 403, fetch directo desde el navegador (IP usuario; puede evitar bloqueo)
   run(async () => {
-    const r = await fetch(`${API.cex}?query=${encodeURIComponent(query)}`);
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) {
-      if (r.status === 403 || d.blocked) throw new Error('CEX bloqueó la petición. Prueba en mexico.webuy.com o uk.webuy.com.');
-      throw new Error(d.error || d.message || `CEX: ${r.status}`);
+    var r = await fetch(`${API.cex}?query=${encodeURIComponent(query)}`);
+    var d = await r.json().catch(function () { return {}; });
+    if (r.ok) return { items: d.results || [], currency: d.currency || 'MXN', fallback: d.fallback || null };
+    if (r.status !== 403 && !d.blocked) throw new Error(d.error || d.message || 'CEX: ' + r.status);
+    try {
+      return await fetchCexDirect(query);
+    } catch (e) {
+      throw new Error('CEX bloqueó la petición. Prueba en mexico.webuy.com.');
     }
-    return { items: d.results ?? [], currency: d.currency || 'MXN', fallback: d.fallback || null };
   }, 'cexResults', 'border-orange-500', 'MXN', { blockedUi: true, fallbackKey: 'fallback' });
 
   // CheapShark (USD → MXN). Precio en centavos: API devuelve "cheapest" como string, e.g. "4.99"
