@@ -102,7 +102,7 @@ function setBlocked(id, title, hint, linkUrl, linkText) {
     <div class="rounded-lg p-3 bg-amber-900/20 border border-amber-500/50 text-amber-200 text-sm text-center">
       <div class="font-bold mb-1">${escapeHtml(title)}</div>
       <div class="opacity-90 text-xs mb-3">${escapeHtml(hint)}</div>
-      <a href="${escapeHtml(linkUrl)}" target="_blank" class="inline-block bg-amber-600 hover:bg-amber-500 text-black text-[10px] font-bold py-2 px-4 rounded uppercase no-underline">
+      <a href="${escapeHtml(linkUrl)}" target="_blank" class="inline-block bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-bold py-2 px-4 rounded uppercase no-underline">
         ${escapeHtml(linkText)} ↗
       </a>
     </div>`;
