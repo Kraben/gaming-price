@@ -228,33 +228,52 @@ async function buscar() {
   // eBay (USD → MXN si hay tipo de cambio)
   run(async () => fetchApi(API.ebay, query, 'query'), 'ebayResults', 'border-green-500', 'USD');
 
-  // CEX: 1) /api/cex  2) si 403, fetch directo desde el navegador (IP usuario; puede evitar bloqueo)
-  run(async () => {
-    var r = await fetch(`${API.cex}?query=${encodeURIComponent(query)}`);
-    var d = await r.json().catch(function () { return {}; });
-    if (r.ok) return { items: d.results || [], currency: d.currency || 'MXN', fallback: d.fallback || null };
-    if (r.status !== 403 && !d.blocked) throw new Error(d.error || d.message || 'CEX: ' + r.status);
-    try {
-      return await fetchCexDirect(query);
-    } catch (e) {
-      throw new Error('CEX bloqueó la petición. Prueba en mx.webuy.com.');
-    }
-  }, 'cexResults', 'border-orange-500', 'MXN', { blockedUi: true, fallbackKey: 'fallback' });
+  // --- BÚSQUEDA EN CEX (Webuy) ---
+const cexDiv = document.getElementById('cexResults'); // Cambiado de mlResults a cexResults
+cexDiv.innerHTML = "<p style='color: #ff6600; font-weight: bold;'>⚡ Escaneando CeX México/UK...</p>";
 
-  // CheapShark (USD → MXN). Precio en centavos: API devuelve "cheapest" como string, e.g. "4.99"
-  run(async () => {
-    const r = await fetch(`https://www.cheapshark.com/api/1.0/games?title=${encodeURIComponent(query)}`);
-    if (!r.ok) throw new Error(`CheapShark: ${r.status}`);
-    const list = await r.json();
-    return (list || []).map(x => ({
-      title: x.external,
-      price: parseFloat(x.cheapest) || 0,
-      permalink: x.cheapestDealID ? `https://www.cheapshark.com/redirect?dealID=${x.cheapestDealID}` : null
-    }));
-  }, 'digitalResults', 'border-blue-500', 'USD');
+fetch(`/api/cex?query=${encodeURIComponent(query)}`)
+    .then(res => {
+        // Si la API responde con error 403 o similar, lanzamos un error para ir al catch
+        if (!res.ok) throw new Error(`Status ${res.status}`);
+        return res.json();
+    })
+    .then(productos => {
+        // Validamos que sea un array y tenga contenido
+        if (Array.isArray(productos) && productos.length > 0) {
+            cexDiv.innerHTML = productos.map(item => `
+                <div style="background: #111827; padding: 1rem; border-radius: 0.5rem; border-left: 4px solid #f97316; margin-bottom: 12px; display: flex; gap: 12px; align-items: center;">
+                    <img src="${item.image}" style="width: 65px; height: 65px; border-radius: 4px; object-fit: contain; background: white;" alt="Juego">
+                    <div style="flex: 1;">
+                        <p style="font-size: 0.75rem; color: #9ca3af; margin: 0; text-transform: uppercase;">${item.category}</p>
+                        <h4 style="font-size: 0.85rem; color: #f3f4f6; margin: 2px 0; line-height: 1.2;">${item.title}</h4>
+                        <div style="display: flex; align-items: baseline; gap: 8px;">
+                            <p style="font-size: 1.1rem; color: #f97316; font-weight: bold; margin: 0;">$${item.price.toLocaleString()} ${item.currency}</p>
+                        </div>
+                        <a href="${item.url}" target="_blank" style="color: #6366f1; font-size: 0.75rem; text-decoration: none; font-weight: bold;">Ver en CeX ↗</a>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            // Si no hay resultados, mostramos el botón manual
+            mostrarFallbackCex(cexDiv, query);
+        }
+    })
+    .catch(error => {
+        console.error("Error en CeX:", error);
+        mostrarFallbackCex(cexDiv, query);
+    });
+
+// Función auxiliar para no repetir código
+function mostrarFallbackCex(container, query) {
+    container.innerHTML = `
+        <div style="background: rgba(249, 115, 22, 0.1); border: 1px solid #f97316; padding: 1rem; border-radius: 0.5rem;">
+            <p style="color: #f97316; font-weight: bold; margin-bottom: 5px;">⚠️ CeX no disponible</p>
+            <p style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 10px;">La API está bloqueada temporalmente. Intenta la búsqueda directa:</p>
+            <a href="https://mexico.webuy.com/search?stext=${encodeURIComponent(query)}" 
+               target="_blank" 
+               style="display: inline-block; background: #f97316; color: black; padding: 6px 12px; border-radius: 4px; font-weight: bold; text-decoration: none; font-size: 0.8rem;">
+               Buscar "${query}" en mx.webuy.com ↗
+            </a>
+        </div>`;
 }
-
-document.getElementById('searchBtn').onclick = buscar;
-document.getElementById('gameInput')?.addEventListener('keypress', e => {
-  if (e.key === 'Enter') buscar();
-});
