@@ -4,12 +4,10 @@
 
 const http = require('http');
 const https = require('https');
-const url = require('url');
 
 const PORT = 3000;
 
 const server = http.createServer((req, res) => {
-  // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
@@ -20,10 +18,10 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // Parse the target URL from query parameter
-  const parsedUrl = url.parse(req.url, true);
+  const base = 'http://localhost';
+  const parsedUrl = new URL(req.url || '/', base);
   const pathname = parsedUrl.pathname;
-  let targetUrl = parsedUrl.query.url;
+  let targetUrl = parsedUrl.searchParams.get('url');
 
   // Handle favicon and other non-proxy requests gracefully
   if (pathname === '/favicon.ico') {
@@ -80,32 +78,31 @@ const server = http.createServer((req, res) => {
     headers['Authorization'] = req.headers.Authorization;
   }
 
-  // Determine if target is HTTPS
   const isHttps = targetUrl.startsWith('https://');
   const requestModule = isHttps ? https : http;
 
-  // Parse target URL
-  const targetParsed = url.parse(targetUrl);
+  const targetParsed = new URL(targetUrl);
+  const port = targetParsed.port || (isHttps ? 443 : 80);
+  const path = targetParsed.pathname + targetParsed.search;
 
   const options = {
     hostname: targetParsed.hostname,
-    port: targetParsed.port || (isHttps ? 443 : 80),
-    path: targetParsed.path,
+    port: port,
+    path: path,
     method: req.method,
     headers: headers
   };
 
-  // Log for debugging
   const hasAuth = (headers.Authorization || headers.authorization) ? 'YES' : 'NO';
   const authPreview = headers.Authorization || headers.authorization || 'NONE';
-  console.log(`[${new Date().toISOString()}] ${req.method} ${targetParsed.hostname}${targetParsed.path}`);
+  console.log(`[${new Date().toISOString()}] ${req.method} ${targetParsed.hostname}${path}`);
   console.log(`  [Auth: ${hasAuth}] ${authPreview.substring(0, 30)}...`);
   console.log(`  [Headers being sent:]`, Object.keys(headers).join(', '));
 
   // Make the proxy request
   const proxyReq = requestModule.request(options, (proxyRes) => {
     // Log response status
-    console.log(`[${new Date().toISOString()}] Response: ${proxyRes.statusCode} from ${targetParsed.hostname}`);
+    console.log(`[${new Date().toISOString()}] Response: ${proxyRes.statusCode} from ${options.hostname}`);
     
     // Set CORS headers on response
     const responseHeaders = { ...proxyRes.headers };

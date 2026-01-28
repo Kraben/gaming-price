@@ -66,14 +66,16 @@ function setEmpty(id) {
   el.innerHTML = '<p class="text-gray-500 text-sm italic">Sin resultados.</p>';
 }
 
-function setResults(id, items, color, currency = 'MXN') {
+function setResults(id, items, color, currency = 'MXN', note = null) {
   const el = document.getElementById(id);
   if (!el) return;
   if (!items?.length) {
     setEmpty(id);
     return;
   }
-  el.innerHTML = items.slice(0, 6).map(item => renderItem(item, color, currency)).join('');
+  const listHtml = items.slice(0, 6).map(item => renderItem(item, color, currency)).join('');
+  const noteHtml = note ? `<div class="rounded-lg p-2 mb-2 bg-amber-900/20 border border-amber-500/40 text-amber-200 text-xs">${escapeHtml(note)}</div>` : '';
+  el.innerHTML = noteHtml + listHtml;
 }
 
 async function fetchApi(url, q, queryKey = 'query') {
@@ -92,8 +94,12 @@ async function buscar() {
 
   const run = async (fn, resultId, color, currency = 'MXN', opts = {}) => {
     try {
-      const items = await fn();
-      setResults(resultId, items, color, currency);
+      const raw = await fn();
+      const isObj = raw && !Array.isArray(raw) && raw.items;
+      const items = isObj ? raw.items : raw;
+      const cur = (isObj && raw.currency) ? raw.currency : currency;
+      const note = (isObj && opts.fallbackKey && raw[opts.fallbackKey]) ? raw[opts.fallbackKey] : null;
+      setResults(resultId, items, color, cur, note);
     } catch (e) {
       const msg = e.message || 'Error';
       if (opts.blockedUi && (msg.includes('PolicyAgent') || msg === 'NO_CREDENTIALS' || msg.includes('CEX') || msg.includes('bloqueó'))) {
@@ -129,16 +135,16 @@ async function buscar() {
   // eBay
   run(async () => fetchApi(API.ebay, query, 'query'), 'ebayResults', 'border-green-500', 'USD');
 
-  // CEX (403 = bloqueado por CEX)
+  // CEX: MX primero; si 403, backend prueba UK y devuelve { results, currency, fallback? }
   run(async () => {
     const r = await fetch(`${API.cex}?query=${encodeURIComponent(query)}`);
     const d = await r.json().catch(() => ({}));
     if (!r.ok) {
-      if (r.status === 403 || d.blocked) throw new Error('CEX bloqueó la petición. Prueba en mexico.webuy.com.');
+      if (r.status === 403 || d.blocked) throw new Error('CEX bloqueó la petición. Prueba en mexico.webuy.com o uk.webuy.com.');
       throw new Error(d.error || d.message || `CEX: ${r.status}`);
     }
-    return d.results ?? [];
-  }, 'cexResults', 'border-orange-500', 'MXN', { blockedUi: true });
+    return { items: d.results ?? [], currency: d.currency || 'MXN', fallback: d.fallback || null };
+  }, 'cexResults', 'border-orange-500', 'MXN', { blockedUi: true, fallbackKey: 'fallback' });
 
   // CheapShark (directo, sin backend)
   run(async () => {

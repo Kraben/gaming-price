@@ -4,19 +4,19 @@ Comparador de precios de videojuegos para México que muestra precios físicos (
 
 ## ⚠️ IMPORTANTE: Estado de la API de Mercado Libre
 
-**La API de búsqueda de Mercado Libre está BLOQUEADA por PolicyAgent y NO FUNCIONA.**
+**La API de búsqueda pública de Mercado Libre está deprecada/bloqueada (403 PolicyAgent) y NO FUNCIONA.**
 
-- ❌ **Mercado Libre**: La API `/sites/MLM/search` devuelve 403 Forbidden (PolicyAgent) - **NO FUNCIONA**
-- ✅ **CheapShark**: Funciona perfectamente para precios digitales (Steam, Epic, etc.)
+- ❌ **Mercado Libre**: `/sites/MLM/search` → 403 Forbidden (PolicyAgent). **Un proxy por sí solo tampoco suele bastar**; ML detecta y bloquea el uso automatizado.
+- ✅ **CheapShark**: Precios digitales (Steam, Epic, etc.) — **FUNCIONA**
+- ✅ **eBay, CEX**: Según implementación y disponibilidad de las APIs.
 
-**El proyecto funciona para comparar precios digitales, pero los precios físicos de Mercado Libre no están disponibles debido a restricciones de la API.**
+**Opciones para datos de ML:** búsqueda manual en mercadolibre.com.mx o **APIs de scraping de pago** (ScrapingBee, Oxylabs, Apify). Detalles y referencias (incl. [Reddit r/devsarg](https://www.reddit.com/r/devsarg/comments/1n8dlfi/api_o_scraping_para_mercado_libre/)) → **[EXPLICACION_ML.md](./EXPLICACION_ML.md)**.
 
 ## 🚀 Características
 
-- **Precios Digitales**: ✅ Búsqueda en PC vía CheapShark API (USD) - **FUNCIONA**
-- **Precios Físicos**: ❌ Búsqueda en Mercado Libre México (MXN) - **BLOQUEADO POR ML**
-- **Interfaz Moderna**: Diseño oscuro con Tailwind CSS
-- **Búsqueda en Tiempo Real**: Resultados instantáneos (solo digital)
+- **Precios Digitales**: ✅ CheapShark (Steam, Epic, etc.) — **FUNCIONA**
+- **Precios Físicos**: ✅ eBay, CEX/Webuy (según config); ❌ Mercado Libre — **BLOQUEADO** (ver [EXPLICACION_ML.md](./EXPLICACION_ML.md))
+- **Interfaz**: Diseño oscuro, Tailwind CSS, búsqueda en tiempo real
 
 ## 📋 Requisitos
 
@@ -104,8 +104,9 @@ Luego visita `http://localhost:8000`
 
 ## 📦 APIs Utilizadas
 
-- **Mercado Libre API**: ❌ BLOQUEADA - La búsqueda de productos físicos devuelve 403 (PolicyAgent)
-- **CheapShark API**: ✅ FUNCIONA - Búsqueda de precios digitales (Steam, Epic, etc.)
+- **Mercado Libre API**: ❌ Bloqueada/deprecada (403 PolicyAgent). Proxy solo no suele bastar. Ver [EXPLICACION_ML.md](./EXPLICACION_ML.md).
+- **CheapShark API**: ✅ Precios digitales (Steam, Epic, etc.)
+- **eBay, CEX**: Según configuración en Vercel.
 
 ## 🎨 Tecnologías
 
@@ -141,21 +142,17 @@ Luego visita `http://localhost:8000`
 - La app muestra un mensaje informativo cuando ML está bloqueado
 - Puedes usar la app para comparar precios digitales en PC
 
-**No es un bug del código** - Es una restricción de Mercado Libre que bloquea todas las búsquedas automáticas, incluso con:
-- Backend propio (no proxy público)
-- Token OAuth válido
-- Headers correctos
-- User-Agent apropiado
+**No es un bug del código** — Mercado Libre bloquea las búsquedas automáticas incluso con backend propio, token OAuth, headers correctos o **proxy**. Las alternativas viables son búsqueda manual o **APIs de scraping de pago** (ScrapingBee, Oxylabs, Apify).
 
-Ver [EXPLICACION_ML.md](./EXPLICACION_ML.md) para más detalles.
+Ver **[EXPLICACION_ML.md](./EXPLICACION_ML.md)** para deprecación oficial, por qué un proxy no basta, enlace a Reddit r/devsarg y alternativas (scraping APIs).
 
 ### CheapShark sin resultados
 - CheapShark puede no tener todos los juegos
 - Intenta con nombres más específicos o en inglés
 
 ### Mercado Libre sin resultados
-- Verifica que las credenciales API sean válidas
-- Asegúrate de que el proxy local esté corriendo
+- La API pública está bloqueada/deprecada. No es un tema de credenciales ni de proxy local.
+- Ver [EXPLICACION_ML.md](./EXPLICACION_ML.md) para alternativas (búsqueda manual, ScrapingBee, Oxylabs, Apify).
 
 ## 📄 Licencia
 

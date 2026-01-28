@@ -1,69 +1,91 @@
-# 🔍 ¿Por qué no hay resultados de Mercado Libre?
+# ¿Por qué no hay resultados de Mercado Libre?
 
-## El Problema
+## Resumen
 
-Cuando buscas "zelda" (o cualquier juego), **no ves resultados físicos de Mercado Libre** porque:
+La **API oficial de búsqueda pública** de Mercado Libre (`/sites/MLM/search`) está **deprecada / bloqueada**: devuelve **403 Forbidden** (PolicyAgent). Usar **proxy propio tampoco suele bastar**: ML detecta y bloquea automáticos más allá del IP. Para comparadores de precios como este, las opciones viables hoy son **búsqueda manual** o **APIs de scraping de pago** (ScrapingBee, Oxylabs, Apify).
 
-1. **Mercado Libre está bloqueando la API** con un error 403 "PolicyAgent"
-2. Esto significa que su sistema de seguridad detecta y bloquea las búsquedas automáticas
-3. **No es un error de nuestro código** - es una restricción de Mercado Libre
+---
 
-## ¿Qué está funcionando?
+## 1. Qué pasa con la API oficial
 
-✅ **CheapShark (precios digitales)** - Funciona perfectamente
-- Muestra precios de Steam, Epic Games, etc.
-- Ejemplo: "The Legend of Zelda: Majora's Mask - $4.99 USD"
+### Endpoint afectado
 
-❌ **Mercado Libre (precios físicos)** - Bloqueado por PolicyAgent
-- No podemos obtener resultados de búsqueda pública
-- Mercado Libre restringe este endpoint
+- `GET /sites/MLM/search?q=...` (y búsquedas por categoría, vendedor, etc.)
 
-## ¿Por qué Mercado Libre bloquea esto?
+Mercado Libre:
 
-Mercado Libre tiene políticas de seguridad (PolicyAgent) que:
-- Detectan uso automatizado de su API
-- Bloquean requests que parecen venir de bots/scrapers
-- Protegen su plataforma de abuso
+- **Deprecó** este endpoint para uso público / Cross-Border Trade (CBT).
+- Devuelve **403** con cuerpo tipo `"blocked_by": "PolicyAgent"` en muchas integraciones.
+- Documentación actual (ej. [Items & Searches](https://developers.mercadolibre.com.ar/en_us/items-and-searches), [CBT](https://developers.mercadolibre.com.ar/devsite/items-and-searches-global-selling)) indica que hay que migrar a **endpoints autenticados**.
 
-Incluso con:
-- ✅ Backend propio (no proxy público)
-- ✅ Token OAuth válido
-- ✅ Headers correctos
-- ✅ User-Agent apropiado
+### Endpoints “recomendados” por ML
 
-**Mercado Libre sigue bloqueando la búsqueda.**
+- `GET /users/{USER_ID}/items/search`
+- `GET /marketplace/users/{USER_ID}/items/search`
 
-## Soluciones Posibles
+**Problema para un comparador de precios:**  
+Esos endpoints sirven para **buscar ítems de tu propia cuenta de vendedor**. No permiten buscar en el **catálogo público** de ML. Por tanto, **no sustituyen** a `/sites/MLM/search` para mostrar precios de terceros.
 
-### 1. **Búsqueda Manual** (Actual)
-- Busca directamente en [mercadolibre.com.mx](https://www.mercadolibre.com.mx/)
-- La app muestra un enlace para facilitar esto
+---
 
-### 2. **Usar OAuth de Usuario** (Complejo)
-- Requiere que cada usuario se autentique con su cuenta de Mercado Libre
-- Más complejo de implementar
-- Puede que aún sea bloqueado
+## 2. Por qué un proxy solo no suele ayudar
 
-### 3. **Web Scraping** (No recomendado)
-- Violaría los términos de servicio de Mercado Libre
-- Puede resultar en bloqueo permanente
-- No es ético ni legal
+En la práctica (y según comentarios en comunidades como [r/devsarg](https://www.reddit.com/r/devsarg/comments/1n8dlfi/api_o_scraping_para_mercado_libre/)):
 
-### 4. **Esperar a que ML cambie políticas**
-- Mercado Libre puede cambiar sus políticas en el futuro
-- Por ahora, el bloqueo es consistente
+- **Proxy propio** (VPS, Cloudflare, etc.): muchas veces **sigue dando 403**.
+- PolicyAgent y sistemas similares no se basan solo en IP:
+  - Comportamiento de las peticiones (headers, patrones, etc.)
+  - Rate limiting, fingerprints, etc.
 
-## Estado Actual del Proyecto
+Por eso se suele decir que **“la API de ML ya no funciona ni con proxy”** para búsqueda pública automatizada.
 
-✅ **Funcional para precios digitales**
-- CheapShark funciona perfectamente
-- Puedes comparar precios de PC (Steam, Epic, etc.)
+---
 
-⚠️ **Limitado para precios físicos**
-- Mercado Libre bloquea la API
-- Mostramos mensaje informativo en lugar de error
-- Enlace directo a Mercado Libre para búsqueda manual
+## 3. Opciones reales hoy
 
-## Conclusión
+### A) Búsqueda manual (la que usamos ahora)
 
-El proyecto **sí funciona**, pero está limitado por las políticas de Mercado Libre. Los precios digitales funcionan perfectamente, y para precios físicos, la mejor opción actual es buscar manualmente en el sitio de Mercado Libre.
+- El usuario busca en [mercadolibre.com.mx](https://www.mercadolibre.com.mx/) o [mercadolibre.com.ar](https://www.mercadolibre.com.ar/).
+- La app muestra un enlace y un mensaje claro cuando ML no está disponible.
+- **Coste:** cero. **Limitación:** no hay resultados de ML dentro de la app.
+
+### B) APIs de scraping de pago
+
+Servicios que usan **proxys rotativos, residenciales y anti-bloqueo** para obtener datos de ML:
+
+| Servicio       | Qué ofrece                               | Enlace / nota |
+|----------------|------------------------------------------|----------------|
+| **ScrapingBee**| Mercadolibre Scraper API, JS, geotarget  | [scrapingbee.com/scrapers/mercadolibre-api](https://www.scrapingbee.com/scrapers/mercadolibre-api/) – planes desde ~49 USD/mes |
+| **Oxylabs**    | Web Scraper API para Mercado Libre/Livre | [oxylabs.io](https://oxylabs.io/products/scraper-api/ecommerce/mercadolibre) – pool de proxies grande |
+| **Apify**      | Mercado Libre Product Search Scraper     | [apify.com](https://apify.com/ecomscrape/mercadolibre-product-search-scraper) – ~20 USD/mes + uso |
+
+- **Ventaja:** pueden devolver datos de búsquedas en ML aunque la API oficial esté bloqueada.
+- **Desventajas:** coste, cumplir sus ToS y los de Mercado Libre, y posible mantenimiento si ML cambia el HTML.
+
+Si quieres integrar uno de estos, haría falta:
+
+- Crear un backend (o serverless) que llame a la API del proveedor (p. ej. ScrapingBee) con tu API key.
+- Transformar su respuesta al formato que ya usa la app (lista de ítems con título, precio, enlace, etc.) y exponer algo como `/api/mercadolibre` que el frontend consuma igual que ahora.
+
+### C) OAuth de usuario (no soluciona búsqueda pública)
+
+- Autenticarse con cuenta ML y usar los endpoints de “mis ítems” **solo** permite buscar en **tu** inventario.
+- No da acceso al catálogo público para un comparador genérico. Por eso **no es una alternativa** a `/sites/MLM/search`.
+
+---
+
+## 4. Referencias
+
+- [Reddit r/devsarg – API o scraping para Mercado Libre](https://www.reddit.com/r/devsarg/comments/1n8dlfi/api_o_scraping_para_mercado_libre/)
+- [ML Developers – Items & Searches](https://developers.mercadolibre.com.ar/en_us/items-and-searches)
+- [ML Developers – Items and searches (CBT)](https://developers.mercadolibre.com.ar/devsite/items-and-searches-global-selling)
+
+---
+
+## 5. Estado en este proyecto
+
+- **ML (API oficial):** no usamos búsqueda pública porque está bloqueada/deprecada; mostramos mensaje claro y enlace a ML.
+- **CheapShark (digital):** funciona con normalidad.
+- **eBay, CEX, etc.:** según corresponda en la app.
+
+Si en el futuro se integra un **scraper de pago** (ScrapingBee, Oxylabs, Apify), se documentará aquí y en el README.
