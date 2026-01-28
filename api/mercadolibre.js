@@ -1,7 +1,7 @@
 // Vercel Serverless Function para Mercado Libre API
-// Variables requeridas en Vercel: ML_CLIENT_ID, ML_CLIENT_SECRET
+// Variables: ML_CLIENT_ID, ML_CLIENT_SECRET
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   const { query } = req.query;
   const CLIENT_ID = process.env.ML_CLIENT_ID;
   const CLIENT_SECRET = process.env.ML_CLIENT_SECRET;
@@ -47,18 +47,23 @@ export default async function handler(req, res) {
       });
     }
 
-    const searchUrl = `https://api.mercadolibre.com/sites/MLM/search?q=${encodeURIComponent(query)}&limit=6`;
+    const searchUrl = 'https://api.mercadolibre.com/sites/MLM/search?q=' + encodeURIComponent(query) + '&limit=6';
     const searchRes = await fetch(searchUrl, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${tokenData.access_token}`,
+        'Authorization': 'Bearer ' + tokenData.access_token,
         'Accept': 'application/json',
         'User-Agent': 'GamingPriceMX/1.0 (Price comparison)'
       }
     });
 
     if (!searchRes.ok) {
-      const errorData = await searchRes.json().catch(() => ({ message: await searchRes.text() }));
+      let errorData = {};
+      try {
+        errorData = await searchRes.json();
+      } catch (_) {
+        errorData = { message: await searchRes.text() };
+      }
       if (searchRes.status === 403 && errorData.blocked_by === 'PolicyAgent') {
         return res.status(403).json({
           error: 'Mercado Libre bloqueó la búsqueda (PolicyAgent)',
@@ -77,17 +82,19 @@ export default async function handler(req, res) {
 
     const data = await searchRes.json();
     if (data.results && data.results.length > 0) {
-      const items = data.results.map(item => ({
-        id: item.id,
-        title: item.title,
-        price: item.price,
-        currency: item.currency_id,
-        thumbnail: item.thumbnail,
-        permalink: item.permalink,
-        condition: item.condition,
-        shipping: { free_shipping: item.shipping?.free_shipping || false }
-      }));
-      return res.status(200).json({ success: true, results: items, total: data.paging?.total || items.length });
+      const items = data.results.map(function (item) {
+        return {
+          id: item.id,
+          title: item.title,
+          price: item.price,
+          currency: item.currency_id,
+          thumbnail: item.thumbnail,
+          permalink: item.permalink,
+          condition: item.condition,
+          shipping: { free_shipping: (item.shipping && item.shipping.free_shipping) || false }
+        };
+      });
+      return res.status(200).json({ success: true, results: items, total: (data.paging && data.paging.total) || items.length });
     }
     return res.status(200).json({ success: true, results: [], total: 0 });
   } catch (error) {
@@ -95,4 +102,4 @@ export default async function handler(req, res) {
     const msg = error.message || 'Error interno';
     return res.status(500).json({ error: msg, message: msg, code: 'ML_ERROR' });
   }
-}
+};
