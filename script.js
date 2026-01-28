@@ -155,7 +155,7 @@ function parseCexBoxes(data) {
       exchange: item.exchangePrice,
       currency: 'MXN',
       thumbnail: (imgs && imgs.medium) ? imgs.medium : '',
-      permalink: 'https://mexico.webuy.com/product-detail?id=' + item.boxId
+      permalink: 'https://mx.webuy.com/product-detail?id=' + item.boxId
     };
   });
 }
