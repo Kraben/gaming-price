@@ -1,10 +1,10 @@
-// api/cex.js - Copia este código íntegro en tu archivo de Vercel
+// api/cex.js
 const REGIONS = {
   mx: { 
     base: 'https://wss2.cex.mx.webuy.io/v3', 
     currency: 'MXN', 
-    link: 'https://mexico.webuy.com/product-detail?id=',
-    origin: 'https://mexico.webuy.com'
+    link: 'https://mx.webuy.com/product-detail?id=',
+    origin: 'https://mx.webuy.com'
   },
   uk: { 
     base: 'https://wss2.cex.uk.webuy.io/v3', 
