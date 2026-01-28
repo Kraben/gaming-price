@@ -163,7 +163,7 @@ function parseCexBoxes(data) {
 async function fetchCexDirect(query) {
   var cexUrl = 'https://wss2.cex.mx.webuy.io/v3/boxes?q=' + encodeURIComponent(query) + '&firstRecord=1&count=20&sortBy=relevance&sortOrder=desc';
   var r = await fetch(cexUrl);
-  if (!r.ok) throw new Error('CEX bloqueó la petición. Prueba en mexico.webuy.com.');
+  if (!r.ok) throw new Error('CEX bloqueó la petición. Prueba en mx.webuy.com.');
   var data = await r.json().catch(function () { throw new Error('CEX: respuesta no válida'); });
   var items = parseCexBoxes(data);
   return { items: items, currency: 'MXN', fallback: 'Resultados desde búsqueda directa (tu navegador).' };
@@ -199,7 +199,7 @@ async function buscar() {
           setBlocked(resultId, '⚠️ Mercado Libre no disponible', 'La API de búsqueda está restringida (PolicyAgent). Busca en mercadolibre.com.mx.', 'https://www.mercadolibre.com.mx/', 'mercadolibre.com.mx');
         } else if (resultId === 'cexResults') {
           var cexSearchUrl = 'https://mx.webuy.com/search?keyword=' + encodeURIComponent(query);
-          setBlocked(resultId, '⚠️ CEX no disponible', 'La API devuelve 403 (serverless y navegador). Busca directamente en CEX:', cexSearchUrl, 'Buscar «' + query + '» en mexico.webuy.com');
+          setBlocked(resultId, '⚠️ CEX no disponible', 'La API devuelve 403 (serverless y navegador). Busca directamente en CEX:', cexSearchUrl, 'Buscar «' + query + '» en mx.webuy.com');
         } else {
           setBlocked(resultId, '⚠️ Fuente no disponible', msg, null, null);
         }
@@ -237,7 +237,7 @@ async function buscar() {
     try {
       return await fetchCexDirect(query);
     } catch (e) {
-      throw new Error('CEX bloqueó la petición. Prueba en mexico.webuy.com.');
+      throw new Error('CEX bloqueó la petición. Prueba en mx.webuy.com.');
     }
   }, 'cexResults', 'border-orange-500', 'MXN', { blockedUi: true, fallbackKey: 'fallback' });
 
