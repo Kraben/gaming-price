@@ -164,33 +164,32 @@ async function buscar() {
   }, 'mlResults', 'border-yellow-500', 'MXN', { blockedUi: true });
 
   // 2. EBAY (Normalizado)
-  run(async () => {
+run(async () => {
+    // 1. Llamada al API (Vercel ya filtra por Videojuegos)
     const r = await fetch(`${API.ebay}?query=${encodeURIComponent(query)}`);
     const d = await r.json();
     
     if (!r.ok) throw new Error("EBAY_ERR");
 
-    // 1. Extraemos y normalizamos los datos básicos
-    let items = (d.results || d).map(item => ({
+    // 2. Extraemos los resultados del objeto que envía el servidor
+    let items = (d.results || []).map(item => ({
         title: item.title,
-        price: parseFloat(item.price?.value || item.price) || 0,
-        thumbnail: item.image?.imageUrl || item.thumbnail,
-        permalink: item.itemWebUrl || item.permalink,
+        price: parseFloat(item.price) || 0, // Ya viene como número del server
+        thumbnail: item.thumbnail,
+        permalink: item.permalink,
         currency: 'USD'
     }));
 
-    // 2. Convertimos a MXN primero (si hay tasas disponibles) 
-    // para que el ordenamiento sea real sobre el valor final
+    // 3. Convertimos a MXN para un ordenamiento justo
     if (rates && rates.usd) {
         items = convertToMxn(items, 'USD', rates);
     }
 
-    // 3. ORDENAMIENTO: Del más barato al más caro
+    // 4. ORDENAMIENTO: Del más barato al más caro (Ascendente)
     items.sort((a, b) => a.price - b.price);
 
     return items;
 }, 'ebayResults', 'border-green-500', 'MXN');
-
   // 3. CEX (Sin fetch directo para evitar CORS)
   run(async () => {
     const r = await fetch(`${API.cex}?query=${encodeURIComponent(query)}`);
