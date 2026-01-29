@@ -7,6 +7,7 @@ const API = {
   ml: `${BASE}/api/mercadolibre`,
   ebay: `${BASE}/api/ebay`,
   cex: `${BASE}/api/cex`
+  amazon: `${BASE}/api/amazon`
 };
 
 const RATES_API = 'https://api.frankfurter.dev/v1/latest';
