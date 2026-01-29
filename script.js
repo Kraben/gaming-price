@@ -50,7 +50,6 @@ function setBlocked(id, title, hint, linkUrl, linkText) {
         ${linkText} ↗
       </a>
     </div>`;
-}
 
 async function buscar() {
   const query = document.getElementById('gameInput')?.value?.trim();
