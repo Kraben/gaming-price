@@ -211,6 +211,19 @@ run(async () => {
     }));
   }, 'digitalResults', 'border-blue-500', 'USD');
 }
+// 5. AMAZON MÉXICO (Vía Rainforest)
+run(async () => {
+    const r = await fetch(`${API.amazon}?query=${encodeURIComponent(query)}`);
+    const d = await r.json();
+    if (!r.ok) throw new Error("AMAZON_ERR");
+
+    let items = (d.results || []);
+
+    // Como Rainforest ya nos da MXN, solo ordenamos
+    items.sort((a, b) => a.price - b.price);
+
+    return items;
+}, 'amazonResults', 'border-yellow-600', 'MXN');
 
 // Eventos
 document.getElementById('searchBtn').onclick = buscar;
