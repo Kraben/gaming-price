@@ -51,6 +51,7 @@ function setBlocked(id, title, hint, linkUrl, linkText) {
       </a>
     </div>`;
 }
+// ... (Tus variables BASE y API iniciales se mantienen igual)
 
 async function buscar() {
   const query = document.getElementById('gameInput')?.value?.trim();
@@ -64,16 +65,17 @@ async function buscar() {
 
   const rates = await getRates();
 
+  // DEFINICIÓN DE RUN (Línea 55 aproximadamente)
   const run = async (fn, resultId, color, currency = 'MXN') => {
     try {
       const data = await fn();
       let rawItems = data.results || data || [];
       
-      // FILTRO: Limpia ceros y artículos que no son videojuegos
+      // FILTRO: Quita precios $0 y artículos irrelevantes (aretes, libros, ropa)
       let items = rawItems.filter(item => {
         const p = Number(item.price);
         const t = item.title.toLowerCase();
-        const esBasura = t.includes('novel') || t.includes('libro') || t.includes('playera') || t.includes('camisa') || t.includes('póster') || t.includes('guía') || t.includes('arete');
+        const esBasura = t.includes('novel') || t.includes('libro') || t.includes('playera') || t.includes('camisa') || t.includes('arete') || t.includes('pendant') || t.includes('guía');
         return p > 0 && !esBasura;
       });
 
@@ -88,87 +90,35 @@ async function buscar() {
       document.getElementById(resultId).innerHTML = items.slice(0, 6).map(it => renderItem(it, color)).join('');
       
     } catch (e) {
-      const links = {
-        amazonResults: `https://www.amazon.com.mx/s?k=${encodeURIComponent(query)}&i=videogames`,
-        mlResults: `https://listado.mercadolibre.com.mx/${encodeURIComponent(query)}`,
-        ebayResults: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}`,
-        cexResults: `https://mexico.webuy.com/search?stext=${encodeURIComponent(query)}`
-      };
-      setBlocked(resultId, 'Acceso Limitado', 'Intenta la búsqueda directa:', links[resultId] || '#', 'BUSCAR MANUALMENTE');
-    }
-  };
-
-  // Ejecución de las llamadas
-  run(() => fetch(`${API.amazon}?query=${query}`).then(r => r.json()), 'amazonResults', 'border-yellow-700');
-  run(() => fetch(`${API.ml}?query=${query}`).then(r => r.json()), 'mlResults', 'border-yellow-500');
-  run(() => fetch(`${API.ebay}?query=${query}`).then(r => r.json()), 'ebayResults', 'border-green-600', 'USD');
-  run(() => fetch(`${API.cex}?query=${query}`).then(r => r.json()), 'cexResults', 'border-orange-500');
-  
-  async function buscar() {
-  const query = document.getElementById('gameInput')?.value?.trim();
-  if (!query) return;
-
-  const ids = ['amazonResults', 'mlResults', 'ebayResults', 'cexResults', 'digitalResults'];
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = '<p class="text-gray-500 text-xs italic animate-pulse">Buscando...</p>';
-  });
-
-  const rates = await getRates();
-
-  const run = async (fn, resultId, color, currency = 'MXN') => {
-    try {
-      const data = await fn();
-      let rawItems = data.results || data || [];
-      
-      // FILTRO DE CALIDAD: Eliminamos resultados de $0 y artículos que no son juegos
-      let items = rawItems.filter(item => {
-        const p = Number(item.price);
-        const t = item.title.toLowerCase();
-        // Agregamos filtros para evitar libros, playeras y aretes
-        const esBasura = t.includes('novel') || t.includes('libro') || t.includes('playera') || t.includes('camisa') || t.includes('póster') || t.includes('guía') || t.includes('arete') || t.includes('pendant');
-        return p > 0 && !esBasura;
-      });
-
-      if (items.length === 0) throw new Error("EMPTY");
-
-      if (rates && (currency === 'USD' || currency === 'GBP')) {
-        const rate = (currency === 'USD') ? rates.usd : rates.gbp;
-        items = items.map(it => ({ ...it, price: it.price * rate }));
-      }
-      
-      items.sort((a, b) => a.price - b.price);
-      document.getElementById(resultId).innerHTML = items.slice(0, 6).map(it => renderItem(it, color)).join('');
-      
-    } catch (e) {
-      // Configuramos enlaces de respaldo reales para el botón "BUSCAR MANUALMENTE"
+      // Enlaces de respaldo para el botón de error
       const links = {
         amazonResults: `https://www.amazon.com.mx/s?k=${encodeURIComponent(query)}&i=videogames`,
         mlResults: `https://listado.mercadolibre.com.mx/${encodeURIComponent(query)}`,
         ebayResults: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}`,
         cexResults: `https://mexico.webuy.com/search?stext=${encodeURIComponent(query)}`,
-        digitalResults: `https://www.cheapshark.com/search#q:${encodeURIComponent(query)}` // Link de respaldo para CheapShark
+        digitalResults: `https://www.cheapshark.com/search#q:${encodeURIComponent(query)}`
       };
       setBlocked(resultId, 'Acceso Limitado', 'Intenta la búsqueda directa:', links[resultId] || '#', 'BUSCAR MANUALMENTE');
     }
-  };
+  }; // AQUÍ SE CIERRA LA FUNCIÓN RUN CORRECTAMENTE
 
-  // Ejecución
+  // EJECUCIÓN DE LAS APIS
   run(() => fetch(`${API.amazon}?query=${query}`).then(r => r.json()), 'amazonResults', 'border-yellow-700');
   run(() => fetch(`${API.ml}?query=${query}`).then(r => r.json()), 'mlResults', 'border-yellow-500');
   run(() => fetch(`${API.ebay}?query=${query}`).then(r => r.json()), 'ebayResults', 'border-green-600', 'USD');
   run(() => fetch(`${API.cex}?query=${query}`).then(r => r.json()), 'cexResults', 'border-orange-500');
   
-  // CheapShark: Ahora envía a la búsqueda si no hay resultados directos
+  // CheapShark: Ahora redirige correctamente a la tienda
   run(() => fetch(`https://www.cheapshark.com/api/1.0/games?title=${encodeURIComponent(query)}`)
     .then(r => r.json())
     .then(d => d.map(x => ({
       title: x.external, 
       price: x.cheapest, 
       thumbnail: x.thumb, 
-      permalink: `https://www.cheapshark.com/redirect?dealID=${x.cheapestDealID}`
+      permalink: `https://www.cheapshark.com/search#q:${encodeURIComponent(x.external)}`
     }))), 'digitalResults', 'border-blue-500', 'USD');
-}
-// Eventos del botón y tecla Enter
+} // CIERRE DE LA FUNCIÓN BUSCAR
+
+// EVENTOS FINALES
 document.getElementById('searchBtn').onclick = buscar;
 document.getElementById('gameInput').onkeypress = (e) => { if (e.key === 'Enter') buscar(); };
