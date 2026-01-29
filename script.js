@@ -84,17 +84,24 @@ async function buscar() {
       const data = await fn();
       let rawItems = data.results || data || [];
       
-      // Filtro de seguridad en script.js dentro de la función run
+    // Dentro de tu script.js en la función buscar() -> run()
 let items = rawItems.filter(item => {
   const p = Number(item.price);
   const t = item.title.toLowerCase();
   
-  // Si el precio es 0, Amazon probablemente no tiene stock real (evita el bug de Zelda)
+  // 1. Eliminamos precios de $0 o errores de carga
   if (p <= 0) return false;
 
-  // Última barrera contra artículos que se cuelen
-  const basura = ['novel', 'libro', 'playera', 'camisa', 'arete'];
-  return !basura.some(palabra => t.includes(palabra));
+  // 2. Filtro agresivo de "basura"
+  const palabrasProhibidas = [
+    'arete', 'stainless steel', 'acero inoxidable', // Elimina la joyería
+    'novel', 'libro', 'facts', 'biografía',          // Elimina libros
+    'playera', 'camisa', 't-shirt', 'póster'         // Elimina ropa/merch
+  ];
+
+  const esBasura = palabrasProhibidas.some(palabra => t.includes(palabra));
+  
+  return !esBasura;
 });
 
       if (items.length === 0) throw new Error("EMPTY");
