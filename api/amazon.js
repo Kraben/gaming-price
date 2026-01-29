@@ -3,7 +3,7 @@ module.exports = async function handler(req, res) {
   const API_KEY = process.env.RAINFOREST_KEY;
 
   if (!query) return res.status(400).json({ error: 'Query requerida' });
-const url = `https://api.rainforestapi.com/request?api_key=${API_KEY}&type=search&amazon_domain=amazon.com.mx&search_term=${encodeURIComponent(query)}&category_id=bestsellers_videogames&exclude_sponsored=true`;
+const url = `https://api.rainforestapi.com/request?api_key=${API_KEY}&type=search&amazon_domain=amazon.com.mx&search_term=${encodeURIComponent(query)}&exclude_sponsored=true`;
   try {
     const response = await fetch(url);
     const data = await response.json();
