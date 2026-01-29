@@ -118,7 +118,11 @@ async function buscar() {
     const r = await fetch(`${API.amazon}?query=${encodeURIComponent(query)}`);
     return await r.json();
   }, 'amazonResults', 'border-yellow-700', 'MXN');
-
+  
+      let items = (data.results || []).filter(item => item.price > 0);
+      items.sort((a, b) => a.price - b.price);
+      return items;
+  
   // 2. MERCADO LIBRE
   run(async () => {
     const r = await fetch(`${API.ml}?query=${encodeURIComponent(query)}`);
