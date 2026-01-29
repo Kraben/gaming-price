@@ -1,4 +1,30 @@
-// ... (Mantén tus variables BASE, API y la función getRates igual al principio)
+const BASE = window.location.origin;
+const API = {
+  ml: `${BASE}/api/mercadolibre`,
+  ebay: `${BASE}/api/ebay`,
+  cex: `${BASE}/api/cex`,
+  amazon: `${BASE}/api/amazon`
+};
+
+const RATES_API = 'https://api.frankfurter.dev/v1/latest';
+let ratesCache = null;
+
+async function getRates() {
+  if (ratesCache) return ratesCache;
+  try {
+    const [usdRes, gbpRes] = await Promise.all([
+      fetch(RATES_API + '?from=USD&to=MXN'),
+      fetch(RATES_API + '?from=GBP&to=MXN')
+    ]);
+    const usdData = await usdRes.json();
+    const gbpData = await gbpRes.json();
+    if (usdData.rates) {
+      ratesCache = { usd: usdData.rates.MXN, gbp: gbpData.rates?.MXN || null };
+      return ratesCache;
+    }
+  } catch (e) { console.warn('Tasas no disponibles'); }
+  return null;
+}
 
 function renderItem(item, color, currency = 'MXN') {
   const thumb = item.thumbnail || '';
@@ -16,7 +42,6 @@ function renderItem(item, color, currency = 'MXN') {
 function setBlocked(id, title, hint, linkUrl, linkText) {
   const el = document.getElementById(id);
   if (!el) return;
-  // Recuperamos el diseño naranja de advertencia
   el.innerHTML = `
     <div class="rounded-lg p-4 bg-orange-950/20 border border-orange-500/40 text-center my-2">
       <div class="text-orange-500 font-bold text-xs mb-1 uppercase tracking-widest">${title}</div>
@@ -34,14 +59,4 @@ async function buscar() {
   const ids = ['amazonResults', 'mlResults', 'ebayResults', 'cexResults', 'digitalResults'];
   ids.forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.innerHTML = '<p class="text-gray-500 text-xs italic animate-pulse">Buscando...</p>';
-  });
-
-  const rates = await getRates();
-
-  const run = async (fn, resultId, color, currency = 'MXN') => {
-    try {
-      const data = await fn();
-      let rawItems = data.results || data || [];
-      
-      // FILTRO DE CALIDAD: Eliminamos ceros y artículos que no son juegos [cite: Captura de pantalla 2026
+    if (el) el.innerHTML = '<p class="text-gray-500
