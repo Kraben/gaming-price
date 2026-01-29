@@ -6,7 +6,7 @@ module.exports = async function handler(req, res) {
   if (!query) return res.status(400).json({ error: 'Query requerida' });
   if (!API_KEY) return res.status(500).json({ error: 'Falta RAINFOREST_KEY en Vercel' });
 
-  // Agregamos logic=search para mejorar la precisión y amazon_domain correcto
+  // Endpoint configurado para Amazon México y Videojuegos
   const url = `https://api.rainforestapi.com/request?api_key=${API_KEY}&type=search&amazon_domain=amazon.com.mx&search_term=${encodeURIComponent(query)}&category_id=videogames`;
 
   try {
@@ -20,13 +20,11 @@ module.exports = async function handler(req, res) {
     const items = data.search_results.map(item => {
       let finalPrice = 0;
       
-      // Lógica robusta para capturar el precio real
+      // Lógica para extraer el precio real del JSON de Rainforest
       if (item.price && item.price.value) {
         finalPrice = item.price.value;
       } else if (item.offers && item.offers.primary && item.offers.primary.price) {
         finalPrice = item.offers.primary.price.value;
-      } else if (typeof item.price === 'number') {
-        finalPrice = item.price;
       }
 
       return {
@@ -36,13 +34,14 @@ module.exports = async function handler(req, res) {
         permalink: item.link,
         currency: 'MXN'
       };
-    });
+    })
+    // FILTRO CRÍTICO: No enviamos productos de $0 al frontend
+    .filter(item => item.price > 0);
 
-    // IMPORTANTE: Enviar la respuesta de vuelta al script.js
+    // Enviamos el objeto con la propiedad "results" para que script.js lo reconozca
     return res.status(200).json({ success: true, results: items });
 
   } catch (e) {
-    console.error("Error Rainforest:", e);
-    return res.status(500).json({ error: 'Error al conectar con Amazon', message: e.message });
+    return res.status(500).json({ error: 'Error de conexión con Rainforest', message: e.message });
   }
 };
