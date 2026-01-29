@@ -1,5 +1,5 @@
 // Vercel Serverless Function para eBay API
-// Variables: EBAY_APP_ID, EBAY_CERT_ID
+// Variables en Vercel Settings: EBAY_APP_ID, EBAY_CERT_ID
 
 module.exports = async function handler(req, res) {
   const { query } = req.query;
@@ -17,6 +17,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
+    // 1. Obtención del Token OAuth
     const auth = Buffer.from(CLIENT_ID + ':' + CLIENT_SECRET).toString('base64');
     const tokenRes = await fetch('https://api.ebay.com/identity/v1/oauth2/token', {
       method: 'POST',
@@ -38,9 +39,16 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const searchUrl = 'https://api.ebay.com/buy/browse/v1/item_summary/search?q=' + encodeURIComponent(query) + '&limit=6&category_ids=139973';
+    // 2. Búsqueda filtrada por categoría 1249 (Video Games & Consoles)
+    // Usamos limit=15 para tener margen y luego ordenar en el frontend
+    const categoryId = "1249"; 
+    const searchUrl = `https://api.ebay.com/buy/browse/v1/item_summary/search?q=${encodeURIComponent(query)}&category_ids=${categoryId}&limit=15`;
+    
     const ebayRes = await fetch(searchUrl, {
-      headers: { 'Authorization': 'Bearer ' + tokenData.access_token }
+      headers: { 
+        'Authorization': 'Bearer ' + tokenData.access_token,
+        'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US'
+      }
     });
 
     if (!ebayRes.ok) {
@@ -52,14 +60,16 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // 3. Procesamiento y Normalización de Resultados
     const data = await ebayRes.json();
     const summaries = data.itemSummaries || [];
+    
     const items = summaries.map(function (item) {
       const p = item.price || {};
       return {
         id: item.itemId,
         title: item.title,
-        price: p.value || 0,
+        price: parseFloat(p.value) || 0, // Convertimos a número para facilitar el sorteo
         currency: p.currency || 'USD',
         thumbnail: (item.image && item.image.imageUrl) || '',
         permalink: item.itemWebUrl || 'https://www.ebay.com/itm/' + item.itemId,
@@ -67,7 +77,13 @@ module.exports = async function handler(req, res) {
       };
     });
 
-    return res.status(200).json({ success: true, results: items, total: items.length });
+    // Devolvemos el objeto con la propiedad "results" que busca tu script.js
+    return res.status(200).json({ 
+      success: true, 
+      results: items, 
+      total: items.length 
+    });
+
   } catch (error) {
     console.error('Error en API eBay:', error);
     return res.status(500).json({ error: 'Error interno del servidor', message: error.message });
