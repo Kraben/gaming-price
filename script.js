@@ -155,8 +155,18 @@ async function buscar() {
       }
     }
   };
+// 1. AMAZON MÉXICO (Vía Rainforest) - Prioridad Alta
+run(async () => {
+    const r = await fetch(`${API.amazon}?query=${encodeURIComponent(query)}`);
+    const d = await r.json();
+    if (!r.ok) throw new Error("AMAZON_ERR");
 
-  // 1. MERCADO LIBRE
+    let items = (d.results || []);
+    // Ordenar por precio ascendente
+    items.sort((a, b) => a.price - b.price);
+    return items;
+}, 'amazonResults', 'border-yellow-600', 'MXN');
+  // 2. MERCADO LIBRE
   run(async () => {
     const r = await fetch(`${API.ml}?query=${encodeURIComponent(query)}`);
     const d = await r.json();
@@ -164,7 +174,7 @@ async function buscar() {
     return d.results || [];
   }, 'mlResults', 'border-yellow-500', 'MXN', { blockedUi: true });
 
-  // 2. EBAY (Normalizado)
+  // 3. EBAY (Normalizado)
 run(async () => {
     // 1. Llamada al API (Vercel ya filtra por Videojuegos)
     const r = await fetch(`${API.ebay}?query=${encodeURIComponent(query)}`);
@@ -211,20 +221,6 @@ run(async () => {
     }));
   }, 'digitalResults', 'border-blue-500', 'USD');
 }
-// 5. AMAZON MÉXICO (Vía Rainforest)
-run(async () => {
-    const r = await fetch(`${API.amazon}?query=${encodeURIComponent(query)}`);
-    const d = await r.json();
-    if (!r.ok) throw new Error("AMAZON_ERR");
-
-    let items = (d.results || []);
-
-    // Como Rainforest ya nos da MXN, solo ordenamos
-    items.sort((a, b) => a.price - b.price);
-
-    return items;
-}, 'amazonResults', 'border-yellow-600', 'MXN');
-
 // Eventos
 document.getElementById('searchBtn').onclick = buscar;
 document.getElementById('gameInput')?.addEventListener('keypress', e => {
