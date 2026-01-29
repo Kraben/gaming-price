@@ -18,16 +18,24 @@ module.exports = async function handler(req, res) {
     }
 
     // Normalizamos los datos para tu script.js
-    const items = data.search_results.map(item => ({
-      title: item.title,
-      price: item.price?.value || 0,
-      thumbnail: item.image,
-      permalink: item.link,
-      currency: 'MXN'
-    }));
-
-    return res.status(200).json({ results: items });
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
+    
+const items = data.search_results.map(item => {
+  // Buscamos el precio en múltiples campos posibles de Rainforest
+  let finalPrice = 0;
+  
+  if (item.price && typeof item.price === 'object') {
+    finalPrice = item.price.value; // Caso estándar
+  } else if (item.price) {
+    finalPrice = item.price; // Caso directo
+  } else if (item.offers && item.offers.primary) {
+    finalPrice = item.offers.primary.price.value; // Caso de ofertas
   }
-};
+
+  return {
+    title: item.title,
+    price: finalPrice || 0, // Si sigue siendo null, ponemos 0
+    thumbnail: item.image,
+    permalink: item.link,
+    currency: 'MXN'
+  };
+});
