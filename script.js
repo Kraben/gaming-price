@@ -1,30 +1,4 @@
-const BASE = window.location.origin;
-const API = {
-  ml: `${BASE}/api/mercadolibre`,
-  ebay: `${BASE}/api/ebay`,
-  cex: `${BASE}/api/cex`,
-  amazon: `${BASE}/api/amazon`
-};
-
-const RATES_API = 'https://api.frankfurter.dev/v1/latest';
-let ratesCache = null;
-
-async function getRates() {
-  if (ratesCache) return ratesCache;
-  try {
-    const [usdRes, gbpRes] = await Promise.all([
-      fetch(RATES_API + '?from=USD&to=MXN'),
-      fetch(RATES_API + '?from=GBP&to=MXN')
-    ]);
-    const usdData = await usdRes.json();
-    const gbpData = await gbpRes.json();
-    if (usdData.rates) {
-      ratesCache = { usd: usdData.rates.MXN, gbp: gbpData.rates?.MXN || null };
-      return ratesCache;
-    }
-  } catch (e) { console.warn('Tasas no disponibles'); }
-  return null;
-}
+// ... (Mantén tus variables BASE, API y la función getRates igual al principio)
 
 function renderItem(item, color, currency = 'MXN') {
   const thumb = item.thumbnail || '';
@@ -42,14 +16,16 @@ function renderItem(item, color, currency = 'MXN') {
 function setBlocked(id, title, hint, linkUrl, linkText) {
   const el = document.getElementById(id);
   if (!el) return;
+  // Recuperamos el diseño naranja de advertencia
   el.innerHTML = `
     <div class="rounded-lg p-4 bg-orange-950/20 border border-orange-500/40 text-center my-2">
       <div class="text-orange-500 font-bold text-xs mb-1 uppercase tracking-widest">${title}</div>
       <div class="text-gray-400 text-[10px] mb-3 leading-tight">${hint}</div>
-      <a href="${linkUrl}" target="_blank" class="inline-block bg-orange-600 hover:bg-orange-500 text-white text-[10px] font-black py-2 px-6 rounded-full uppercase no-underline transition-all">
+      <a href="${linkUrl}" target="_blank" class="inline-block bg-orange-600 hover:bg-orange-500 text-white text-[10px] font-black py-2 px-6 rounded-full uppercase no-underline transition-all shadow-lg">
         ${linkText} ↗
       </a>
     </div>`;
+}
 
 async function buscar() {
   const query = document.getElementById('gameInput')?.value?.trim();
@@ -66,37 +42,6 @@ async function buscar() {
   const run = async (fn, resultId, color, currency = 'MXN') => {
     try {
       const data = await fn();
-      let items = (data.results || data || []).filter(item => Number(item.price) > 0);
-
-      if (items.length === 0) throw new Error("EMPTY");
-
-      if (rates && (currency === 'USD' || currency === 'GBP')) {
-        const rate = currency === 'USD' ? rates.usd : rates.gbp;
-        items = items.map(it => ({ ...it, price: it.price * rate }));
-      }
+      let rawItems = data.results || data || [];
       
-      items.sort((a, b) => a.price - b.price);
-      document.getElementById(resultId).innerHTML = items.slice(0, 6).map(it => renderItem(it, color)).join('');
-    } catch (e) {
-      const links = {
-        amazonResults: `https://www.amazon.com.mx/s?k=${encodeURIComponent(query)}&i=videogames`,
-        mlResults: `https://listado.mercadolibre.com.mx/${encodeURIComponent(query)}`,
-        ebayResults: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}`,
-        cexResults: `https://mexico.webuy.com/search?stext=${encodeURIComponent(query)}`
-      };
-      setBlocked(resultId, 'Sin resultados automáticos', 'Intenta la búsqueda directa:', links[resultId] || '#', 'BUSCAR MANUALMENTE');
-    }
-  };
-
-  // Ejecución
-  run(() => fetch(`${API.amazon}?query=${query}`).then(r => r.json()), 'amazonResults', 'border-yellow-700');
-  run(() => fetch(`${API.ml}?query=${query}`).then(r => r.json()), 'mlResults', 'border-yellow-500');
-  run(() => fetch(`${API.ebay}?query=${query}`).then(r => r.json()), 'ebayResults', 'border-green-600', 'USD');
-  run(() => fetch(`${API.cex}?query=${query}`).then(r => r.json()), 'cexResults', 'border-orange-500');
-  run(() => fetch(`https://www.cheapshark.com/api/1.0/games?title=${query}`).then(r => r.json()).then(d => d.map(x => ({title: x.external, price: x.cheapest, thumbnail: x.thumb, permalink: `https://www.cheapshark.com/redirect?dealID=${x.cheapestDealID}`}))), 'digitalResults', 'border-blue-500', 'USD');
-}
-
-document.getElementById('searchBtn').onclick = buscar;
-document.getElementById('gameInput').onkeypress = (e) => { if (e.key === 'Enter') buscar(); };
-
-
+      // FILTRO DE CALIDAD: Eliminamos ceros y artículos que no son juegos [cite: Captura de pantalla 2026
