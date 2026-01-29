@@ -34,7 +34,7 @@ async function buscar() {
       const links = {
         amazonResults: `https://www.amazon.com.mx/s?k=${encodeURIComponent(query)}&i=videogames`,
         mlResults: `https://games.mercadolibre.com.mx/${encodeURIComponent(query)}`,
-        cexResults: `https://mexico.webuy.com/search?stext=${encodeURIComponent(query)}`,
+        cexResults: `https://mx.webuy.com/search?stext=${encodeURIComponent(query)}`,
         ebayResults: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}&_sacat=1249`
       };
       
