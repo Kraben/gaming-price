@@ -1,12 +1,9 @@
-// Gamer Price MX – ML, eBay, CEX, CheapShark
-// Producción: Vercel serverless (/api/*).
-// Tipos de cambio: Frankfurter. Precios mostrados en MXN.
-
+// Gamer Price MX – ML, eBay, CEX, Amazon, CheapShark
 const BASE = window.location.origin;
 const API = {
   ml: `${BASE}/api/mercadolibre`,
   ebay: `${BASE}/api/ebay`,
-  cex: `${BASE}/api/cex`
+  cex: `${BASE}/api/cex`,
   amazon: `${BASE}/api/amazon`
 };
 
@@ -22,207 +19,132 @@ async function getRates() {
     ]);
     const usdData = await usdRes.json().catch(() => ({}));
     const gbpData = await gbpRes.json().catch(() => ({}));
-    const usd = usdData.rates && usdData.rates.MXN ? Number(usdData.rates.MXN) : null;
-    const gbp = gbpData.rates && gbpData.rates.MXN ? Number(gbpData.rates.MXN) : null;
-    if (usd != null) {
-      ratesCache = { usd, gbp, date: usdData.date || '' };
+    if (usdData.rates) {
+      ratesCache = { usd: usdData.rates.MXN, gbp: gbpData.rates?.MXN || null, date: usdData.date };
       return ratesCache;
     }
-  } catch (e) {
-    console.warn('Tipo de cambio no disponible:', e);
-  }
+  } catch (e) { console.warn('Tasas no disponibles', e); }
   return null;
 }
 
 function updateRatesBanner(rates) {
   const el = document.getElementById('ratesBanner');
-  if (!el) return;
-  if (!rates) {
-    el.textContent = 'Tipo de cambio no disponible. Precios en moneda original.';
-    return;
-  }
-  let t = `1 USD = ${rates.usd.toFixed(2)} MXN`;
-  if (rates.gbp != null) t += ` · 1 GBP = ${rates.gbp.toFixed(2)} MXN`;
-  t += '. Precios convertidos a MXN.';
-  el.textContent = t;
+  if (!el || !rates) return;
+  el.textContent = `1 USD = ${rates.usd.toFixed(2)} MXN | 1 GBP = ${rates.gbp?.toFixed(2) || '—'} MXN. Fuente: Frankfurter.`;
 }
 
 function convertToMxn(items, fromCurrency, rates) {
-  if (!rates || !items || !items.length) return items;
+  if (!rates) return items;
   const rate = fromCurrency === 'GBP' ? rates.gbp : rates.usd;
-  if (rate == null) return items;
-  return items.map(item => {
-    const orig = Number(item.price) || 0;
-    return Object.assign({}, item, {
-      price: Math.round(orig * rate * 100) / 100,
-      priceOriginal: orig,
-      currencyOriginal: fromCurrency
-    });
-  });
-}
-
-function escapeHtml(t) {
-  const d = document.createElement('div');
-  d.textContent = t;
-  return d.innerHTML;
+  if (!rate) return items;
+  return items.map(item => ({
+    ...item,
+    price: Math.round(item.price * rate * 100) / 100,
+    priceOriginal: item.price,
+    currencyOriginal: fromCurrency
+  }));
 }
 
 function renderItem(item, color, currency = 'MXN') {
-  const price = item.price ?? 0;
-  const title = escapeHtml(item.title || 'Sin título');
-  const thumb = item.thumbnail || item.image || ''; // Acepta ambos nombres
-  const link = item.permalink || item.url || '#';
-  const img = thumb
-    ? `<img src="${escapeHtml(thumb)}" alt="" class="w-11 h-11 object-contain bg-white rounded" loading="lazy">`
-    : `<div class="w-11 h-11 bg-gray-700 rounded flex items-center justify-center text-[10px]">N/A</div>`;
-  
-  const orig = item.priceOriginal != null && item.currencyOriginal;
-  const origLabel = orig ? ` <span class="text-gray-500 text-xs font-normal">(~$${Number(item.priceOriginal).toLocaleString()} ${item.currencyOriginal})</span>` : '';
-  
+  const title = item.title || 'Sin título';
+  const thumb = item.thumbnail || item.image || '';
+  const price = Number(item.price).toLocaleString('es-MX');
+  const orig = item.priceOriginal ? `<span class="text-gray-500 text-[10px] font-normal">(~$${item.priceOriginal} ${item.currencyOriginal})</span>` : '';
+
   return `
-    <a href="${escapeHtml(link)}" target="_blank" rel="noopener" class="block bg-gray-900/80 rounded-lg p-3 border-l-4 ${color} hover:bg-gray-800/80 transition flex gap-3 items-center no-underline text-inherit mb-2">
-      ${img}
+    <a href="${item.permalink}" target="_blank" class="block bg-gray-900/80 rounded-lg p-3 border-l-4 ${color} hover:bg-gray-800 transition flex gap-3 items-center no-underline text-inherit mb-2">
+      <img src="${thumb}" class="w-11 h-11 object-contain bg-white rounded" onerror="this.style.display='none'">
       <div class="flex-1 min-w-0">
         <div class="text-gray-200 text-sm font-medium truncate">${title}</div>
-        <div class="text-lg font-black ${color.replace('border-', 'text-')}">$${Number(price).toLocaleString()} ${currency}${origLabel}</div>
+        <div class="text-lg font-black ${color.replace('border-', 'text-')}">$${price} ${currency} ${orig}</div>
       </div>
     </a>`;
-}
-
-function setLoading(ids, label = 'Buscando…') {
-  ids.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.innerHTML = `<p class="text-gray-500 text-sm italic animate-pulse">${label}</p>`;
-  });
 }
 
 function setBlocked(id, title, hint, linkUrl, linkText) {
   const el = document.getElementById(id);
   if (!el) return;
   el.innerHTML = `
-    <div class="rounded-lg p-3 bg-amber-900/20 border border-amber-500/50 text-amber-200 text-sm text-center">
-      <div class="font-bold mb-1">${escapeHtml(title)}</div>
-      <div class="opacity-90 text-xs mb-3">${escapeHtml(hint)}</div>
-      <a href="${escapeHtml(linkUrl)}" target="_blank" class="inline-block bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-bold py-2 px-4 rounded uppercase no-underline">
-        ${escapeHtml(linkText)} ↗
+    <div class="rounded-lg p-4 bg-orange-950/30 border border-orange-500/50 text-center">
+      <div class="text-orange-400 font-bold text-xs mb-1 uppercase">${title}</div>
+      <div class="text-gray-400 text-[10px] mb-3">${hint}</div>
+      <a href="${linkUrl}" target="_blank" class="inline-block bg-orange-600 text-white text-[10px] font-bold py-2 px-4 rounded-full uppercase no-underline">
+        ${linkText} ↗
       </a>
     </div>`;
-}
-
-function setResults(id, items, color, currency = 'MXN', note = null) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  if (!items?.length) {
-    el.innerHTML = '<p class="text-gray-500 text-sm italic">Sin resultados.</p>';
-    return;
-  }
-  const listHtml = items.slice(0, 6).map(item => renderItem(item, color, currency)).join('');
-  const noteHtml = note ? `<div class="rounded-lg p-2 mb-2 bg-blue-900/20 border border-blue-500/40 text-blue-200 text-[10px]">${escapeHtml(note)}</div>` : '';
-  el.innerHTML = noteHtml + listHtml;
 }
 
 async function buscar() {
   const query = document.getElementById('gameInput')?.value?.trim();
   if (!query) return;
 
-  setLoading(['mlResults', 'ebayResults', 'cexResults', 'digitalResults']);
+  const ids = ['amazonResults', 'mlResults', 'ebayResults', 'cexResults', 'digitalResults'];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '<p class="text-gray-500 text-sm italic animate-pulse">Buscando...</p>';
+  });
 
   const rates = await getRates();
   updateRatesBanner(rates);
 
   const run = async (fn, resultId, color, currency = 'MXN', opts = {}) => {
     try {
-      const raw = await fn();
-      let items = Array.isArray(raw) ? raw : (raw.items || []);
-      let cur = raw.currency || currency;
-      const note = (opts.fallbackKey && raw[opts.fallbackKey]) ? raw[opts.fallbackKey] : null;
-
-      if (rates && (cur === 'USD' || cur === 'GBP') && items.length) {
-        items = convertToMxn(items, cur, rates);
-        cur = 'MXN';
+      const data = await fn();
+      let items = Array.isArray(data) ? data : (data.results || []);
+      
+      if (rates && (currency === 'USD' || currency === 'GBP')) {
+        items = convertToMxn(items, currency, rates);
       }
-      setResults(resultId, items, color, cur, note);
+      
+      items.sort((a, b) => a.price - b.price);
+
+      const el = document.getElementById(resultId);
+      if (items.length === 0) {
+        el.innerHTML = '<p class="text-gray-600 text-xs italic">Sin resultados.</p>';
+      } else {
+        el.innerHTML = items.slice(0, 6).map(item => renderItem(item, color, 'MXN')).join('');
+      }
     } catch (e) {
       if (opts.blockedUi) {
-        if (resultId === 'cexResults') {
-          setBlocked(resultId, 'CeX No Disponible', 'La API está protegida por seguridad.', `https://mx.webuy.com/search?stext=${encodeURIComponent(query)}`, 'Buscar en Webuy MX');
-        } else if (resultId === 'mlResults') {
-          setBlocked(resultId, 'ML Bloqueado', 'Búsqueda restringida por API.', `https://www.mercadolibre.com.mx/jm/search?as_word=${encodeURIComponent(query)}`, 'Ir a Mercado Libre');
-        }
+        setBlocked(resultId, 'Tienda Protegida', 'No pudimos obtener precios automáticos.', '#', 'Buscar Manualmente');
       } else {
-        const el = document.getElementById(resultId);
-        if (el) el.innerHTML = `<p class="text-red-500 text-xs">Error: ${e.message}</p>`;
+        document.getElementById(resultId).innerHTML = `<p class="text-red-500 text-[10px]">Error de conexión</p>`;
       }
     }
   };
-// 1. AMAZON MÉXICO (Vía Rainforest) - Prioridad Alta
-run(async () => {
-    const r = await fetch(`${API.amazon}?query=${encodeURIComponent(query)}`);
-    const d = await r.json();
-    if (!r.ok) throw new Error("AMAZON_ERR");
 
-    let items = (d.results || []);
-    // Ordenar por precio ascendente
-    items.sort((a, b) => a.price - b.price);
-    return items;
-}, 'amazonResults', 'border-yellow-600', 'MXN');
+  // 1. AMAZON
+  run(async () => {
+    const r = await fetch(`${API.amazon}?query=${encodeURIComponent(query)}`);
+    return await r.json();
+  }, 'amazonResults', 'border-yellow-700', 'MXN');
+
   // 2. MERCADO LIBRE
   run(async () => {
     const r = await fetch(`${API.ml}?query=${encodeURIComponent(query)}`);
-    const d = await r.json();
-    if (!r.ok) throw new Error("BLOCKED");
-    return d.results || [];
+    return await r.json();
   }, 'mlResults', 'border-yellow-500', 'MXN', { blockedUi: true });
 
-  // 3. EBAY (Normalizado)
-run(async () => {
-    // 1. Llamada al API (Vercel ya filtra por Videojuegos)
+  // 3. EBAY
+  run(async () => {
     const r = await fetch(`${API.ebay}?query=${encodeURIComponent(query)}`);
-    const d = await r.json();
-    
-    if (!r.ok) throw new Error("EBAY_ERR");
+    return await r.json();
+  }, 'ebayResults', 'border-green-600', 'USD');
 
-    // 2. Extraemos los resultados del objeto que envía el servidor
-    let items = (d.results || []).map(item => ({
-        title: item.title,
-        price: parseFloat(item.price) || 0, // Ya viene como número del server
-        thumbnail: item.thumbnail,
-        permalink: item.permalink,
-        currency: 'USD'
-    }));
-
-    // 3. Convertimos a MXN para un ordenamiento justo
-    if (rates && rates.usd) {
-        items = convertToMxn(items, 'USD', rates);
-    }
-
-    // 4. ORDENAMIENTO: Del más barato al más caro (Ascendente)
-    items.sort((a, b) => a.price - b.price);
-
-    return items;
-}, 'ebayResults', 'border-green-500', 'MXN');
-  // 3. CEX (Sin fetch directo para evitar CORS)
+  // 4. CEX
   run(async () => {
     const r = await fetch(`${API.cex}?query=${encodeURIComponent(query)}`);
-    if (!r.ok) throw new Error("CEX_BLOCKED");
-    const d = await r.json();
-    return d; // El servidor ya debe devolver el formato correcto
+    if (!r.ok) throw new Error();
+    return await r.json();
   }, 'cexResults', 'border-orange-500', 'MXN', { blockedUi: true });
 
-  // 4. CHEAPSHARK (Digital)
+  // 5. DIGITAL
   run(async () => {
     const r = await fetch(`https://www.cheapshark.com/api/1.0/games?title=${encodeURIComponent(query)}`);
     const list = await r.json();
-    return (list || []).map(x => ({
-      title: x.external,
-      price: parseFloat(x.cheapest),
-      thumbnail: x.thumb,
-      permalink: x.cheapestDealID ? `https://www.cheapshark.com/redirect?dealID=${x.cheapestDealID}` : '#'
-    }));
+    return list.map(x => ({ title: x.external, price: x.cheapest, thumbnail: x.thumb, permalink: `https://www.cheapshark.com/redirect?dealID=${x.cheapestDealID}` }));
   }, 'digitalResults', 'border-blue-500', 'USD');
 }
-// Eventos
+
 document.getElementById('searchBtn').onclick = buscar;
-document.getElementById('gameInput')?.addEventListener('keypress', e => {
-  if (e.key === 'Enter') buscar();
-});
+document.getElementById('gameInput').onkeypress = (e) => { if (e.key === 'Enter') buscar(); };
