@@ -3,11 +3,7 @@ module.exports = async function handler(req, res) {
   const API_KEY = process.env.RAINFOREST_KEY;
 
   if (!query) return res.status(400).json({ error: 'Query requerida' });
-
-  // 1. FORZADO DE CATEGORÍA: Agregamos &category_id=9263797011
-  // Esto es equivalente a seleccionar "Videojuegos" en la barra de Amazon.
-  const url = `https://api.rainforestapi.com/request?api_key=${API_KEY}&type=search&amazon_domain=amazon.com.mx&search_term=${encodeURIComponent(query)}&category_id=9263797011`;
-
+const url = `https://api.rainforestapi.com/request?api_key=${API_KEY}&type=search&amazon_domain=amazon.com.mx&search_term=${encodeURIComponent(query)}&category_id=bestsellers_23973320011&exclude_sponsored=true`;
   try {
     const response = await fetch(url);
     const data = await response.json();
