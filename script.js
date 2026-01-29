@@ -43,10 +43,10 @@ function setBlocked(id, title, hint, linkUrl, linkText) {
   const el = document.getElementById(id);
   if (!el) return;
   el.innerHTML = `
-    <div class="rounded-lg p-4 bg-gray-900 border border-gray-800 text-center">
-      <div class="text-gray-400 font-bold text-xs mb-1 uppercase">${title}</div>
-      <div class="text-gray-500 text-[10px] mb-3">${hint}</div>
-      <a href="${linkUrl}" target="_blank" class="inline-block bg-yellow-600 text-black text-[10px] font-bold py-2 px-4 rounded-full uppercase no-underline hover:bg-yellow-500 transition">
+    <div class="rounded-lg p-4 bg-orange-950/20 border border-orange-500/40 text-center my-2">
+      <div class="text-orange-500 font-bold text-xs mb-1 uppercase tracking-widest">${title}</div>
+      <div class="text-gray-400 text-[10px] mb-3 leading-tight">${hint}</div>
+      <a href="${linkUrl}" target="_blank" class="inline-block bg-orange-600 hover:bg-orange-500 text-white text-[10px] font-black py-2 px-6 rounded-full uppercase no-underline transition-all">
         ${linkText} ↗
       </a>
     </div>`;
@@ -99,3 +99,5 @@ async function buscar() {
 
 document.getElementById('searchBtn').onclick = buscar;
 document.getElementById('gameInput').onkeypress = (e) => { if (e.key === 'Enter') buscar(); };
+
+
