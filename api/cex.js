@@ -8,12 +8,12 @@ async function fetchCex(region, query) {
   const url = `${region.base}/boxes?q=${encodeURIComponent(query)}&firstRecord=1&count=20&sortBy=relevance&sortOrder=desc`;
   return fetch(url, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      'Accept': 'application/json',
-      'Accept-Language': 'es-MX,es;q=0.9',
+      'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+      'Accept-Language': 'en-GB,en-US;q=0.9,en;q=0.8',
       'Origin': region.origin,
       'Referer': region.origin + '/',
-      'Cache-Control': 'no-cache'
+      'Cache-Control': 'max-age=0'
     }
   });
 }
@@ -25,7 +25,7 @@ module.exports = async function handler(req, res) {
   try {
     // Intentamos México directamente
     let response = await fetchCex(REGIONS.mx, query);
-    
+
     // Si da 403 o falla, intentamos UK solo como último recurso
     if (!response.ok) {
       response = await fetchCex(REGIONS.uk, query);
