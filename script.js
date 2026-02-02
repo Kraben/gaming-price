@@ -26,19 +26,17 @@ async function getRates() {
   return null;
 }
 
-function renderItem(item, color, currency = 'MXN') {
-  const thumb = item.thumbnail || '';
-  const price = Number(item.price).toLocaleString('es-MX');
-  const priceDisplay = Number(item.price) === 0 ? "Ver Web" : `$${price} ${currency}`;
-
+// Ejemplo de item compacto para ver más resultados en pantalla
+function renderItem(item) {
   return `
-    <a href="${item.permalink}" target="_blank" class="block bg-gray-900/80 rounded-lg p-3 border-l-4 ${color} hover:bg-gray-800 transition flex gap-3 items-center no-underline text-inherit mb-2">
-      <img src="${thumb}" class="w-11 h-11 object-contain bg-white rounded" onerror="this.style.display='none'">
-      <div class="flex-1 min-w-0">
-        <div class="text-gray-200 text-sm font-medium truncate">${item.title}</div>
-        <div class="text-lg font-black ${color.replace('border-', 'text-')}">${priceDisplay}</div>
-      </div>
-    </a>`;
+    <div class="flex items-center gap-2 p-1 border-b border-gray-800 hover:bg-gray-900 transition-colors">
+        <img src="${item.thumbnail}" class="w-8 h-8 object-contain bg-white rounded">
+        <div class="flex-1 min-w-0">
+            <p class="text-[10px] font-bold truncate">${item.title}</p>
+            <p class="text-[9px] text-yellow-500">$${item.price} MXN</p>
+        </div>
+        <a href="${item.permalink}" target="_blank" class="text-[9px] bg-blue-600 px-2 py-1 rounded-sm font-black">IR</a>
+    </div>`;
 }
 
 function setBlocked(id, title, hint, linkUrl, linkText) {
@@ -69,7 +67,11 @@ async function buscar() {
   const run = async (fn, resultId, color, currency = 'MXN') => {
     try {
       const data = await fn();
-      let rawItems = data.results || data || [];
+
+      // Si la API devuelve error o estructura inesperada, evitamos el crash
+      if (data.error || !data) throw new Error(data.error || 'Invalid Data');
+
+      let rawItems = data.results || (Array.isArray(data) ? data : []);
 
       let items = rawItems.filter(item => {
         const p = Number(item.price);
@@ -79,14 +81,36 @@ async function buscar() {
         const palabrasProhibidas = [
           'arete', 'stainless steel', 'acero inoxidable',
           'novel', 'libro', 'facts', 'biografía',
-          'playera', 'camisa', 't-shirt', 'póster', 'guía', 'pendant'
+          'playera', 'camisa', 't-shirt', 'póster', 'guía', 'pendant',
+          'figura', 'peluche', 'juguete', 'muñeco', 'funko', 'amiibo'
         ];
         const esBasura = palabrasProhibidas.some(palabra => t.includes(palabra));
 
-        // Permitimos precio 0 solo para Amazon (ya que Rainforest bestsellers puede no traer precio)
-        // O simplemente permitimos >= 0 si queremos ser permisivos.
-        // Dado que modifiqué renderItem para mostrar "Ver Web" en 0, lo permitimos.
-        return p >= 0 && !esBasura;
+        // Filtramos precio > 0 (evitar items agotados o sin precio)
+        if (p <= 0 || esBasura) return false;
+
+        // FILTRO DE RELEVANCIA:
+        // El título debe contener al menos una palabra clave de la búsqueda (ignorando palabras comunes/plataformas)
+        // Esto evita que salgan "Uncharted" o "Hogwarts" cuando buscas "God of War"
+        const queryClean = document.getElementById('gameInput').value.toLowerCase();
+        const ignoreWords = ['ps4', 'ps5', 'xbox', 'switch', 'nintendo', 'sony', 'microsoft', 'edition', 'juego', 'game', 'de', 'el', 'la', 'the', 'of', 'for', 'para', 'and', 'y'];
+        const queryTerms = queryClean.split(/\s+/)
+          .map(w => w.replace(/[^a-z0-9]/g, '')) // Limpiar caracteres
+          .filter(w => w.length > 2 && !ignoreWords.includes(w));
+
+        if (queryTerms.length > 0) {
+          // MODO ESTRICTO: Todas las palabras clave deben estar presentes
+          // Esto asegura que "God of War" no muestre "Gears of War" (solo coincidiría "War")
+          // ni "Hogwarts" (que no debería coincidir nada, pero esto asegura limpieza total).
+          const hasMatch = queryTerms.every(term => t.includes(term));
+
+          if (!hasMatch) {
+            // console.log(`❌ Filtrado por irrelevante: "${item.title}"`);
+            return false;
+          }
+        }
+
+        return true;
       });
 
       if (items.length === 0) throw new Error("EMPTY");

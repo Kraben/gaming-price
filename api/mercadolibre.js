@@ -64,13 +64,17 @@ module.exports = async function handler(req, res) {
       } catch (_) {
         errorData = { message: await searchRes.text() };
       }
+
+      console.error('❌ Error ML:', JSON.stringify(errorData, null, 2));
+
       if (searchRes.status === 403 && errorData.blocked_by === 'PolicyAgent') {
         return res.status(403).json({
           error: 'Mercado Libre bloqueó la búsqueda (PolicyAgent)',
           blocked_by: 'PolicyAgent',
           message: 'La API de búsqueda está restringida por Mercado Libre. No hay solución conocida.',
           status: 403,
-          code: 'POLICY_AGENT'
+          code: 'POLICY_AGENT',
+          details: errorData
         });
       }
       return res.status(searchRes.status).json({
